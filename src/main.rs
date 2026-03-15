@@ -6,6 +6,7 @@ mod commands;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
+type ApplicationContext<'a> = poise::ApplicationContext<'a, Data, Error>;
 
 pub struct Data {}
 
@@ -28,8 +29,17 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 #[tokio::main]
 async fn main() {
     let options = poise::FrameworkOptions {
-        commands: vec![commands::hello()],
+        commands: vec![commands::hello(), commands::subscribe()],
         on_error: |error| Box::pin(on_error(error)),
+        pre_command: |ctx| {
+            Box::pin(async move {
+                println!(
+                    "Executing command {} for user {}",
+                    ctx.command().qualified_name,
+                    ctx.author().name
+                )
+            })
+        },
         ..Default::default()
     };
 
