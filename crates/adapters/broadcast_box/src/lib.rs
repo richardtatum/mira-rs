@@ -39,8 +39,6 @@ impl StreamStatusProvider for BroadcastBoxClient {
             .await
             .map_err(|e| CoreError::HttpError(e.to_string()))?;
 
-        println!("{:?}", response);
-
         let statuses = response
             .json::<Vec<models::StreamSummary>>()
             .await
