@@ -1,0 +1,3 @@
+pub enum CoreError {
+    NetworkError,
+}

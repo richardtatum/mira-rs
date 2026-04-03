@@ -1,0 +1,9 @@
+[package]
+name = "discord"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+poise = "0.6.1"
+tokio = { version = "1.50.0", features = ["rt-multi-thread", "macros"]}
+mira-core = { path = "../../core" }

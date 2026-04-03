@@ -26,8 +26,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     }
 }
 
-#[tokio::main]
-async fn main() {
+async fn run() {
     let options = poise::FrameworkOptions {
         commands: vec![commands::hello(), commands::subscribe()],
         on_error: |error| Box::pin(on_error(error)),

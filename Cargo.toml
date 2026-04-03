@@ -1,8 +1,12 @@
-[package]
-name = "mira-rs"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = [
+    "crates/core",
+    "crates/adapters/storage",
+    "crates/adapters/discord",
+    "crates/adapters/broadcast_box",
+    "crates/cli",
+]
+resolver = "2"
 
-[dependencies]
-poise = "0.6.1"
-tokio = { version = "1.50.0", features = ["rt-multi-thread", "macros"]}
+[workspace.dependencies]
+async-trait = "0.1"
