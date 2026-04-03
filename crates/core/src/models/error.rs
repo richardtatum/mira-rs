@@ -1,3 +1,5 @@
+#[derive(Debug)]
 pub enum CoreError {
-    NetworkError,
+    HttpError(String),
+    ConfigError(String),
 }
