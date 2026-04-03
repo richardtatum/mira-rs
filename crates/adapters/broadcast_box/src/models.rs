@@ -1,6 +1,7 @@
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct VideoTrack {
     pub bitrate: i32,
     pub last_keyframe: String, // Datetime
@@ -10,6 +11,7 @@ pub struct VideoTrack {
 pub struct AudioTrack {}
 
 #[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct StreamSummary {
     pub stream_key: String,
     pub is_public: bool,
