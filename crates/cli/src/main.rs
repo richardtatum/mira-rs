@@ -32,8 +32,7 @@ async fn main() {
         Commands::Status { key, url, token } => {
             let client = BroadcastBoxClient::new(url, token);
             match client.get_status(&key).await {
-                Ok(StreamStatus::Online) => println!("{key}: online"),
-                Ok(StreamStatus::Offline) => println!("{key}: offline"),
+                Ok(status) => println!("{key}: {status}"),
                 Err(e) => {
                     eprintln!("Error: {:?}", e);
                     std::process::exit(1);

@@ -1,9 +1,7 @@
 pub mod models;
 
 use async_trait::async_trait;
-use mira_core::CoreError;
-use mira_core::StreamStatus;
-use mira_core::StreamStatusProvider;
+use mira_core::{CoreError, StreamInfo, StreamStatus, StreamStatusProvider};
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 
 pub struct BroadcastBoxClient {
@@ -44,9 +42,12 @@ impl StreamStatusProvider for BroadcastBoxClient {
             .await
             .map_err(|e| CoreError::HttpError(e.to_string()))?; // Maybe should be a parse error?
 
-        // Quick dirty test for just stream online/offline
-        let status = if statuses.iter().any(|s| s.stream_key == key) {
-            StreamStatus::Online
+        let stream = statuses.iter().find(|s| s.stream_key == key);
+        let status = if let Some(online) = stream {
+            let started = online.stream_start.to_string();
+            let viewers = online.sessions.iter().count() as u32;
+
+            StreamStatus::Online(StreamInfo { started, viewers })
         } else {
             StreamStatus::Offline
         };
