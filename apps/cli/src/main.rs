@@ -20,8 +20,8 @@ enum Commands {
         #[arg(long, env = "BROADCAST_BOX_URL")]
         url: String,
         /// Optional bearer token for authentication
-        #[arg(long, env = "BROADCAST_BOX_TOKEN")]
-        token: Option<String>,
+        #[arg(long, env = "BROADCAST_BOX_AUTH_TOKEN")]
+        auth_token: Option<String>,
     },
     Watch {
         /// The stream key to check
@@ -30,8 +30,8 @@ enum Commands {
         #[arg(long, env = "BROADCAST_BOX_URL")]
         url: String,
         /// Optional bearer token for authentication
-        #[arg(long, env = "BROADCAST_BOX_TOKEN")]
-        token: Option<String>,
+        #[arg(long, env = "BROADCAST_BOX_AUTH_TOKEN")]
+        auth_token: Option<String>,
     },
 }
 
@@ -40,8 +40,12 @@ async fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Status { key, url, token } => {
-            let client = BroadcastBoxClient::new(url, token);
+        Commands::Status {
+            key,
+            url,
+            auth_token,
+        } => {
+            let client = BroadcastBoxClient::new(url, auth_token);
             match client.get_statuses(vec![&key]).await {
                 Ok(status) => {
                     if let Some(stream_status) = status.get(&key) {
@@ -56,9 +60,13 @@ async fn main() {
                 }
             }
         }
-        Commands::Watch { key, url, token } => {
+        Commands::Watch {
+            key,
+            url,
+            auth_token,
+        } => {
             let mut watcher = Watcher::new();
-            watcher.register_stream(url, token, key.clone(), move |status| {
+            watcher.register_stream(url, auth_token, key.clone(), move |status| {
                 let key = key.clone();
                 let now = chrono::Local::now().format("%H:%M:%S");
                 async move {
