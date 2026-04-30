@@ -3,7 +3,7 @@ use tokio::sync::mpsc;
 use tokio::time::{Duration, interval};
 
 use crate::StreamStatusProvider;
-use crate::domain::scheduler::AsyncCallback;
+use crate::ports::inbound::AsyncCallback;
 use crate::models::command::Command;
 
 // Worker for a single host, e.g. b.siobud.com

@@ -2,8 +2,8 @@ use std::future::Future;
 use std::time::Duration;
 
 use broadcast_box::BroadcastBoxClient;
-use mira_core::StreamStatus;
-use mira_core::domain::scheduler::{AsyncCallback, Scheduler};
+use mira_core::domain::scheduler::Scheduler;
+use mira_core::{AsyncCallback, StreamStatus};
 
 pub struct App {
     scheduler: Scheduler,

@@ -1,16 +1,11 @@
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use tokio::sync::mpsc;
 use tokio::time::Duration;
 
 use crate::StreamStatusProvider;
 use crate::domain::worker::endpoint_worker;
 use crate::models::command::Command;
-use crate::models::status::StreamStatus;
-
-pub type AsyncCallback =
-    Box<dyn Fn(StreamStatus) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
+use crate::ports::inbound::AsyncCallback;
 
 pub struct Scheduler {
     workers: HashMap<String, mpsc::UnboundedSender<Command>>,
