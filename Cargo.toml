@@ -4,8 +4,8 @@ members = [
     "crates/adapters/storage",
     "crates/adapters/discord",
     "crates/adapters/broadcast_box",
-    "crates/cli",
-    "crates/app"
+    "crates/app",
+    "apps/*",
 ]
 resolver = "2"
 
