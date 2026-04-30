@@ -8,5 +8,5 @@ async-trait = { workspace = true }
 thiserror = { workspace = true }
 mira-core = { path = "../../core" }
 reqwest = { version = "0.13", features = ["json", "rustls"], default-features = false }
-serde = { version = "1", features = ["derive"] }
+serde = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
