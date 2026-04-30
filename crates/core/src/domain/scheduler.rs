@@ -31,6 +31,7 @@ impl Scheduler {
         let sender = self.workers.entry(url.clone()).or_insert_with(|| {
             let (tx, rx) = mpsc::unbounded_channel();
 
+            // TODO: Interval only works the first time, subsequent adjustments are ignored
             tokio::spawn(endpoint_worker(rx, interval, provider));
 
             tx
