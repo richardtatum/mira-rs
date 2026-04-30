@@ -1,8 +1,12 @@
 pub mod models;
 
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use mira_core::{CoreError, StreamInfo, StreamStatus, StreamStatusProvider};
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
+
+use crate::models::StreamSummary;
 
 pub struct BroadcastBoxClient {
     base_url: String,
@@ -28,7 +32,10 @@ impl BroadcastBoxClient {
 
 #[async_trait]
 impl StreamStatusProvider for BroadcastBoxClient {
-    async fn get_status(&self, key: &str) -> Result<StreamStatus, CoreError> {
+    async fn get_statuses(
+        &self,
+        keys: Vec<&str>,
+    ) -> Result<HashMap<String, StreamStatus>, CoreError> {
         let url = format!("{0}/api/status", self.base_url);
         let response = self
             .client
@@ -42,16 +49,27 @@ impl StreamStatusProvider for BroadcastBoxClient {
             .await
             .map_err(|e| CoreError::HttpError(e.to_string()))?; // Maybe should be a parse error?
 
-        let stream = statuses.iter().find(|s| s.stream_key == key);
-        let status = if let Some(online) = stream {
-            let started = online.stream_start.to_string();
-            let viewers = online.sessions.iter().count() as u32;
+        let status_by_key: HashMap<String, StreamSummary> = statuses
+            .into_iter()
+            .map(|status| (status.stream_key.clone(), status))
+            .collect();
 
-            StreamStatus::Online(StreamInfo { started, viewers })
-        } else {
-            StreamStatus::Offline
-        };
+        let result: HashMap<String, StreamStatus> = keys
+            .into_iter()
+            .map(|key| {
+                let status = if let Some(online) = status_by_key.get(key) {
+                    let started = online.stream_start.to_string();
+                    let viewers = online.sessions.iter().count() as u32;
 
-        return Ok(status);
+                    StreamStatus::Online(StreamInfo { started, viewers })
+                } else {
+                    StreamStatus::Offline
+                };
+
+                (key.into(), status)
+            })
+            .collect();
+
+        return Ok(result);
     }
 }

@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+app = { path = "../app"}
 mira-core = { path = "../core" }
 broadcast_box = { path = "../adapters/broadcast_box" }
 clap = { version = "4", features = ["derive", "env"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
+chrono = { workspace = true }

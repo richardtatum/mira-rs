@@ -5,9 +5,12 @@ members = [
     "crates/adapters/discord",
     "crates/adapters/broadcast_box",
     "crates/cli",
+    "crates/app"
 ]
 resolver = "2"
 
 [workspace.dependencies]
 async-trait = "0.1"
 thiserror = "2.0.18"
+tokio = "1.52.1"
+chrono = "0.4"
