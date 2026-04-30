@@ -3,8 +3,8 @@ use tokio::sync::mpsc;
 use tokio::time::{Duration, interval};
 
 use crate::StreamStatusProvider;
-use crate::ports::inbound::AsyncCallback;
 use crate::models::command::Command;
+use crate::ports::inbound::AsyncCallback;
 
 // Worker for a single host, e.g. b.siobud.com
 pub async fn endpoint_worker<P: StreamStatusProvider>(
@@ -21,8 +21,10 @@ pub async fn endpoint_worker<P: StreamStatusProvider>(
             Some(cmd) = rx.recv() => {
                 match cmd {
                     Command::AddKey(key, callback) => {
-                        // keys.insert(key.clone());
                         callbacks.insert(key, callback);
+                    },
+                    Command::RemoveKey(key) => {
+                        callbacks.remove_entry(&key);
                     },
                 }
             }

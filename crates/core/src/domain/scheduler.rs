@@ -38,4 +38,11 @@ impl Scheduler {
 
         sender.send(Command::AddKey(key, callback)).unwrap();
     }
+
+    pub fn deregister<P: StreamStatusProvider + 'static>(&mut self, url: String, key: String) {
+        // TODO: We need to handle the potential that all keys have been removed and we can remove it from the workers map
+        if let Some(sender) = self.workers.get(&url) {
+            sender.send(Command::RemoveKey(key)).unwrap();
+        }
+    }
 }
