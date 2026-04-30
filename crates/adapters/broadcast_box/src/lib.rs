@@ -58,7 +58,7 @@ impl StreamStatusProvider for BroadcastBoxClient {
             .into_iter()
             .map(|key| {
                 let status = if let Some(online) = status_by_key.get(key) {
-                    let started = online.stream_start.to_string();
+                    let started = online.stream_start.format("%Y-%m-%d %H:%M:%S").to_string();
                     let viewers = online.sessions.iter().count() as u32;
 
                     StreamStatus::Online(StreamInfo { started, viewers })
