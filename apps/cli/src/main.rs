@@ -1,7 +1,7 @@
-use app::App;
 use broadcast_box::BroadcastBoxClient;
 use clap::{Parser, Subcommand};
 use mira_core::StreamStatusProvider;
+use status_watcher::Watcher;
 
 #[derive(Parser)]
 #[command(name = "mira", about = "MIRA CLI")]
@@ -57,8 +57,8 @@ async fn main() {
             }
         }
         Commands::Watch { key, url, token } => {
-            let mut app = App::new();
-            app.register_stream(url, token, key.clone(), move |status| {
+            let mut watcher = Watcher::new();
+            watcher.register_stream(url, token, key.clone(), move |status| {
                 let key = key.clone();
                 let now = chrono::Local::now().format("%H:%M:%S");
                 async move {

@@ -5,11 +5,11 @@ use broadcast_box::BroadcastBoxClient;
 use mira_core::domain::scheduler::Scheduler;
 use mira_core::{AsyncCallback, StreamStatus};
 
-pub struct App {
+pub struct Watcher {
     scheduler: Scheduler,
 }
 
-impl App {
+impl Watcher {
     pub fn new() -> Self {
         Self {
             scheduler: Scheduler::new(),
