@@ -50,9 +50,10 @@ async fn main() {
                 Ok(status) => {
                     if let Some(stream_status) = status.get(&key) {
                         println!("{key}: {stream_status}")
+                    } else {
+                        eprintln!("Stream not found! Exiting.");
+                        std::process::exit(1);
                     }
-                    eprintln!("Stream not found! Exiting.");
-                    std::process::exit(1);
                 }
                 Err(e) => {
                     eprintln!("Error: {:?}", e);
