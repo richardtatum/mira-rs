@@ -37,17 +37,21 @@ pub async fn endpoint_worker<P: StreamStatusProvider>(
                 // Collect all the keys
                 let keys: Vec<&str> = callbacks.keys().map(|k| k.as_str()).collect();
 
-                // Grab the status for these keys
-                if let Ok(mut statuses) = status_provider.get_statuses(keys).await {
-
-                    // Loop through the callbacks and match the status to provide
-                    for (key, cb) in &callbacks {
-                        if let Some(status) = statuses.remove(key) {
-                            cb(status).await;
+                match status_provider.get_statuses(keys).await {
+                    Ok(mut statuses) => {
+                        // Loop through the callbacks and match the status to provide
+                        for (key, cb) in &callbacks {
+                            if let Some(status) = statuses.remove(key) {
+                                cb(status).await;
+                            }
                         }
+                    },
+                    Err(e) => {
+                        // TODO: We should consider exiting the loop after X number of errors, but it introduces
+                        // similar issues to exiting on no keys, as we have to notify the caller in some way
+                        println!("Failed to get requested stream status! Error: {:?}", e)
                     }
                 }
-
             }
         }
     }
