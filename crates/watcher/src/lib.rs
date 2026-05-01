@@ -10,9 +10,9 @@ pub struct Watcher {
 }
 
 impl Watcher {
-    pub fn new() -> Self {
+    pub fn new(host_polling_interval_secs: Option<u64>) -> Self {
         Self {
-            scheduler: Scheduler::new(),
+            scheduler: Scheduler::new(host_polling_interval_secs.map(Duration::from_secs)),
         }
     }
 
@@ -28,7 +28,6 @@ impl Watcher {
     {
         let callback: AsyncCallback = Box::new(move |status| Box::pin(f(status)));
         let provider = BroadcastBoxClient::new(url.clone(), auth_token);
-        self.scheduler
-            .register(url, key, Duration::from_secs(30), provider, callback);
+        self.scheduler.register(url, key, provider, callback);
     }
 }

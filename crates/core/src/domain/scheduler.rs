@@ -9,12 +9,14 @@ use crate::ports::inbound::AsyncCallback;
 
 pub struct Scheduler {
     workers: HashMap<String, mpsc::UnboundedSender<Command>>,
+    interval: Duration,
 }
 
 impl Scheduler {
-    pub fn new() -> Self {
+    pub fn new(polling_interval: Option<Duration>) -> Self {
         Self {
             workers: HashMap::new(),
+            interval: polling_interval.unwrap_or(Duration::from_secs(30)),
         }
     }
 
@@ -22,16 +24,15 @@ impl Scheduler {
         &mut self,
         url: String,
         key: String,
-        interval: Duration,
         provider: P,
         callback: AsyncCallback,
     ) {
         // See if there is already a worker for this url, otherwise create a new one
         // and register this key
+        let interval = self.interval;
         let sender = self.workers.entry(url.clone()).or_insert_with(|| {
             let (tx, rx) = mpsc::unbounded_channel();
 
-            // TODO: Interval only works the first time, subsequent adjustments are ignored
             tokio::spawn(endpoint_worker(rx, interval, provider));
 
             tx

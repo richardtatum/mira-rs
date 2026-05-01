@@ -32,6 +32,9 @@ enum Commands {
         /// Optional bearer token for authentication
         #[arg(long, env = "BROADCAST_BOX_AUTH_TOKEN")]
         auth_token: Option<String>,
+        /// Optional host polling interval in seconds
+        #[arg(long)]
+        polling_interval: Option<u64>,
     },
 }
 
@@ -65,8 +68,9 @@ async fn main() {
             key,
             url,
             auth_token,
+            polling_interval,
         } => {
-            let mut watcher = Watcher::new();
+            let mut watcher = Watcher::new(polling_interval);
             watcher.register_stream(url, auth_token, key.clone(), move |status| {
                 let key = key.clone();
                 let now = chrono::Local::now().format("%H:%M:%S");
