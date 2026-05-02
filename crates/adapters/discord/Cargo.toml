@@ -1,9 +1,9 @@
 [package]
-name = "discord"
+name = "mira-discord"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-poise = "0.6.1"
+poise = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 mira-core = { path = "../../core" }

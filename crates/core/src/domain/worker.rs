@@ -9,11 +9,11 @@ use crate::ports::inbound::AsyncCallback;
 // Worker for a single host, e.g. b.siobud.com
 pub async fn endpoint_worker<P: StreamStatusProvider>(
     mut rx: mpsc::UnboundedReceiver<Command>,
-    interval_duration: Duration,
+    polling_interval: Duration,
     status_provider: P,
 ) {
     let mut callbacks: HashMap<String, AsyncCallback> = HashMap::new();
-    let mut ticker = interval(interval_duration);
+    let mut ticker = interval(polling_interval);
 
     loop {
         tokio::select! {

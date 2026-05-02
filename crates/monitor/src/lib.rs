@@ -1,18 +1,18 @@
 use std::future::Future;
 use std::time::Duration;
 
-use broadcast_box::BroadcastBoxClient;
-use mira_core::domain::scheduler::Scheduler;
+use mira_broadcast_box::BroadcastBoxClient;
+use mira_core::domain::dispatcher::Dispatcher;
 use mira_core::{AsyncCallback, StreamStatus};
 
-pub struct Watcher {
-    scheduler: Scheduler,
+pub struct StreamMonitor {
+    scheduler: Dispatcher,
 }
 
-impl Watcher {
+impl StreamMonitor {
     pub fn new(host_polling_interval_secs: Option<u64>) -> Self {
         Self {
-            scheduler: Scheduler::new(host_polling_interval_secs.map(Duration::from_secs)),
+            scheduler: Dispatcher::new(host_polling_interval_secs.map(Duration::from_secs)),
         }
     }
 

@@ -7,12 +7,12 @@ use crate::domain::worker::endpoint_worker;
 use crate::models::command::Command;
 use crate::ports::inbound::AsyncCallback;
 
-pub struct Scheduler {
+pub struct Dispatcher {
     workers: HashMap<String, mpsc::UnboundedSender<Command>>,
     interval: Duration,
 }
 
-impl Scheduler {
+impl Dispatcher {
     pub fn new(polling_interval: Option<Duration>) -> Self {
         Self {
             workers: HashMap::new(),

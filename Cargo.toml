@@ -4,7 +4,7 @@ members = [
     "crates/adapters/storage",
     "crates/adapters/discord",
     "crates/adapters/broadcast_box",
-    "crates/watcher",
+    "crates/monitor",
     "apps/*",
 ]
 resolver = "2"
@@ -15,3 +15,4 @@ thiserror = "2.0.18"
 tokio = "1.52.1"
 chrono = "0.4"
 serde = { version = "1", features = ["derive"] }
+poise = "0.6.1"

@@ -1,8 +1,8 @@
 [package]
-name = "status-watcher"
+name = "mira-monitor"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 mira-core = { path = "../core" }
-broadcast_box = { path = "../adapters/broadcast_box" }
+mira-broadcast-box = { path = "../adapters/broadcast_box" }
