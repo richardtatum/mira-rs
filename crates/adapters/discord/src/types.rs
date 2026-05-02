@@ -4,6 +4,7 @@ use mira_monitor::StreamMonitor;
 
 pub struct Data {
     pub monitor: Arc<StreamMonitor>,
+    // host_provider: from db
 }
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
