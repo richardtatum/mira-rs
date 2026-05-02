@@ -1,5 +1,4 @@
 use dashmap::DashMap;
-use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tokio::time::Duration;
 
@@ -9,6 +8,7 @@ use crate::models::command::Command;
 use crate::ports::inbound::AsyncCallback;
 
 pub struct Dispatcher {
+    // Dashmap is essentially a ConcurrentHashMap
     workers: DashMap<String, mpsc::UnboundedSender<Command>>,
     interval: Duration,
 }

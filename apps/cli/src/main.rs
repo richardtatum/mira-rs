@@ -70,7 +70,7 @@ async fn main() {
             auth_token,
             polling_interval,
         } => {
-            let mut watcher = StreamMonitor::new(polling_interval);
+            let watcher = StreamMonitor::new(polling_interval);
             watcher.register_stream(url, auth_token, key.clone(), move |status| {
                 let key = key.clone();
                 let now = chrono::Local::now().format("%H:%M:%S");
