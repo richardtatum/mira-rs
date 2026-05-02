@@ -3,7 +3,7 @@ use tokio::sync::mpsc;
 use tokio::time::Duration;
 
 use crate::StreamStatusProvider;
-use crate::domain::worker::endpoint_worker;
+use crate::domain::worker::poll_endpoint;
 use crate::models::command::Command;
 use crate::ports::inbound::AsyncCallback;
 
@@ -33,7 +33,7 @@ impl Dispatcher {
         let sender = self.workers.entry(url.clone()).or_insert_with(|| {
             let (tx, rx) = mpsc::unbounded_channel();
 
-            tokio::spawn(endpoint_worker(rx, interval, provider));
+            tokio::spawn(poll_endpoint(rx, interval, provider));
 
             tx
         });

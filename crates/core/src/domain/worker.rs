@@ -7,7 +7,7 @@ use crate::models::command::Command;
 use crate::ports::inbound::AsyncCallback;
 
 // Worker for a single host, e.g. b.siobud.com
-pub async fn endpoint_worker<P: StreamStatusProvider>(
+pub async fn poll_endpoint<P: StreamStatusProvider>(
     mut rx: mpsc::UnboundedReceiver<Command>,
     polling_interval: Duration,
     status_provider: P,
