@@ -1225,6 +1225,7 @@ name = "mira-discord-bot"
 version = "0.1.0"
 dependencies = [
  "mira-discord",
+ "mira-monitor",
  "poise",
  "tokio",
 ]

@@ -1,10 +1,10 @@
 [package]
-name = "mira-discord"
+name = "mira-discord-bot"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 poise = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
-mira-core = { path = "../../core" }
-mira-monitor = { path = "../../monitor"}
+mira-discord = { path = "../../crates/adapters/discord" }
+mira-monitor = { path = "../../crates/monitor"}
