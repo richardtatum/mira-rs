@@ -8,8 +8,11 @@ use poise::serenity_prelude::{
 };
 
 #[poise::command(slash_command)]
-pub async fn subscribe(ctx: Context<'_>) -> Result<(), Error> {
-    let hosts = vec!["https://b.siobud.com", "https://stream.tatum.sh"];
+pub async fn subscribe(
+    ctx: Context<'_>,
+    #[description = "Which key to subscribe to"] key: String,
+) -> Result<(), Error> {
+    let hosts = vec!["https://b.siobud.com", "https://stream.tatum.sh"]; // Grab this from ctx.data().host_provider
     let options = hosts
         .into_iter()
         .map(|host| CreateSelectMenuOption::new(host, host))
@@ -48,7 +51,6 @@ pub async fn subscribe(ctx: Context<'_>) -> Result<(), Error> {
 
             // This is all WIP test stuff.
             let token = env::var("BROADCAST_BOX_AUTH_TOKEN").expect("Missing auth token!");
-            let key = "tatumkhamun".to_string();
             let http = ctx.serenity_context().http.clone();
             let channel_id = ctx.channel_id();
             let notifier = DiscordNotifier::new(key.clone(), channel_id, http);
@@ -62,7 +64,7 @@ pub async fn subscribe(ctx: Context<'_>) -> Result<(), Error> {
 
             let message = serenity::CreateInteractionResponse::UpdateMessage(
                 CreateInteractionResponseMessage::new()
-                    .content(format!("Selected host: {host}"))
+                    .content(format!("Subscribed to '{key}' on {host}"))
                     .components(vec![]),
             );
 
