@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 async-trait = { workspace = true }
+dashmap = "6.1.0"
 tokio = { workspace = true }

@@ -6,18 +6,18 @@ use mira_core::domain::dispatcher::Dispatcher;
 use mira_core::{AsyncCallback, StreamStatus};
 
 pub struct StreamMonitor {
-    scheduler: Dispatcher,
+    dispatcher: Dispatcher,
 }
 
 impl StreamMonitor {
     pub fn new(host_polling_interval_secs: Option<u64>) -> Self {
         Self {
-            scheduler: Dispatcher::new(host_polling_interval_secs.map(Duration::from_secs)),
+            dispatcher: Dispatcher::new(host_polling_interval_secs.map(Duration::from_secs)),
         }
     }
 
     pub fn register_stream<F, Fut>(
-        &mut self,
+        &self,
         url: String,
         auth_token: Option<String>,
         key: String,
@@ -28,6 +28,6 @@ impl StreamMonitor {
     {
         let callback: AsyncCallback = Box::new(move |status| Box::pin(f(status)));
         let provider = BroadcastBoxClient::new(url.clone(), auth_token);
-        self.scheduler.register(url, key, provider, callback);
+        self.dispatcher.register(url, key, provider, callback);
     }
 }

@@ -1,3 +1,4 @@
+use dashmap::DashMap;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tokio::time::Duration;
@@ -8,20 +9,20 @@ use crate::models::command::Command;
 use crate::ports::inbound::AsyncCallback;
 
 pub struct Dispatcher {
-    workers: HashMap<String, mpsc::UnboundedSender<Command>>,
+    workers: DashMap<String, mpsc::UnboundedSender<Command>>,
     interval: Duration,
 }
 
 impl Dispatcher {
     pub fn new(polling_interval: Option<Duration>) -> Self {
         Self {
-            workers: HashMap::new(),
+            workers: DashMap::new(),
             interval: polling_interval.unwrap_or(Duration::from_secs(30)),
         }
     }
 
     pub fn register<P: StreamStatusProvider + 'static>(
-        &mut self,
+        &self,
         url: String,
         key: String,
         provider: P,
