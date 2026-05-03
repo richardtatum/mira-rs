@@ -25,6 +25,10 @@ pub async fn poll_endpoint<P: StreamStatusProvider>(
                     },
                     Command::RemoveKey(key) => {
                         callbacks.remove_entry(&key);
+                        if callbacks.is_empty() {
+                            println!("Callbacks is now empty. Closing loop.");
+                            break; // Break the loop and return, triggering a cleanup
+                        }
                     },
                 }
             }

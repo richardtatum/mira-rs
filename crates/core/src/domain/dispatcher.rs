@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use dashmap::DashMap;
 use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 use tokio::time::Duration;
 
 use crate::StreamStatusProvider;
@@ -9,14 +12,14 @@ use crate::ports::inbound::AsyncCallback;
 
 pub struct Dispatcher {
     // Dashmap is essentially a ConcurrentHashMap
-    workers: DashMap<String, mpsc::UnboundedSender<Command>>,
+    workers: Arc<DashMap<String, mpsc::UnboundedSender<Command>>>,
     interval: Duration,
 }
 
 impl Dispatcher {
     pub fn new(polling_interval: Option<Duration>) -> Self {
         Self {
-            workers: DashMap::new(),
+            workers: Arc::new(DashMap::new()),
             interval: polling_interval.unwrap_or(Duration::from_secs(30)),
         }
     }
@@ -34,7 +37,11 @@ impl Dispatcher {
         let sender = self.workers.entry(url.clone()).or_insert_with(|| {
             let (tx, rx) = mpsc::unbounded_channel();
 
-            tokio::spawn(poll_endpoint(rx, interval, provider));
+            let handle = tokio::spawn(poll_endpoint(rx, interval, provider));
+
+            // Pass the handle and create a task that removes the entry when the function returns
+            // Function returns only happens when all keys are empty after a remove
+            self.spawn_cleanup_task(handle, url.clone());
 
             tx
         });
@@ -47,5 +54,13 @@ impl Dispatcher {
         if let Some(sender) = self.workers.get(&url) {
             sender.send(Command::RemoveKey(key)).unwrap();
         }
+    }
+
+    fn spawn_cleanup_task(&self, handle: JoinHandle<()>, url: String) {
+        let workers = Arc::clone(&self.workers);
+        tokio::spawn(async move {
+            let _ = handle.await; // This returns when the 'poll_endpoint' loop is broken
+            workers.remove(&url);
+        });
     }
 }
