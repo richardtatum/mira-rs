@@ -32,7 +32,6 @@ impl Dispatcher {
         callback: AsyncCallback,
     ) {
         // See if there is already a worker for this url, otherwise create a new one
-        // and register this key
         let interval = self.interval;
         let sender = self.workers.entry(url.clone()).or_insert_with(|| {
             let (tx, rx) = mpsc::unbounded_channel();
@@ -46,6 +45,7 @@ impl Dispatcher {
             tx
         });
 
+        // Register the key with the worker via the message channel
         sender.send(Command::AddKey(key, callback)).unwrap();
     }
 
