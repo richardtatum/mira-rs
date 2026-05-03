@@ -11,9 +11,12 @@ pub async fn poll_endpoint<P: StreamStatusProvider>(
     mut rx: mpsc::UnboundedReceiver<Command>,
     polling_interval: Duration,
     status_provider: P,
+    errors_until_close: Option<u32>,
 ) {
+    let host = status_provider.get_host();
     let mut callbacks: HashMap<String, AsyncCallback> = HashMap::new();
     let mut ticker = interval(polling_interval);
+    let mut remaining_errors = errors_until_close.unwrap_or(3);
 
     loop {
         tokio::select! {
@@ -26,7 +29,7 @@ pub async fn poll_endpoint<P: StreamStatusProvider>(
                     Command::RemoveKey(key) => {
                         callbacks.remove_entry(&key);
                         if callbacks.is_empty() {
-                            println!("Callbacks is now empty. Closing loop.");
+                            println!("Callbacks for {host} are now empty. Closing loop.");
                             break; // Break the loop and return, triggering a cleanup
                         }
                     },
@@ -53,7 +56,12 @@ pub async fn poll_endpoint<P: StreamStatusProvider>(
                     Err(e) => {
                         // TODO: We should consider exiting the loop after X number of errors, but it introduces
                         // similar issues to exiting on no keys, as we have to notify the caller in some way
-                        println!("Failed to get requested stream status! Error: {:?}", e)
+                        println!("Failed to get stream statuses for host {host}! Error: {:?}", e);
+                        remaining_errors -= 1;
+                        if remaining_errors <= 0 {
+                            println!("Worker for host {host} has gone over the max error count. Closing loop.");
+                            break; // Break the loop and return
+                        }
                     }
                 }
             }

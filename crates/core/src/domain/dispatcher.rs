@@ -37,7 +37,7 @@ impl Dispatcher {
         let sender = self.workers.entry(url.clone()).or_insert_with(|| {
             let (tx, rx) = mpsc::unbounded_channel();
 
-            let handle = tokio::spawn(poll_endpoint(rx, interval, provider));
+            let handle = tokio::spawn(poll_endpoint(rx, interval, provider, None));
 
             // Pass the handle and create a task that removes the entry when the function returns
             // Function returns only happens when all keys are empty after a remove
@@ -50,7 +50,6 @@ impl Dispatcher {
     }
 
     pub fn deregister<P: StreamStatusProvider + 'static>(&mut self, url: String, key: String) {
-        // TODO: We need to handle the potential that all keys have been removed and we can remove it from the workers map
         if let Some(sender) = self.workers.get(&url) {
             sender.send(Command::RemoveKey(key)).unwrap();
         }
