@@ -32,6 +32,10 @@ impl BroadcastBoxClient {
 
 #[async_trait]
 impl StreamStatusProvider for BroadcastBoxClient {
+    fn get_host(&self) -> &str {
+        &self.base_url
+    }
+
     async fn get_statuses(
         &self,
         keys: Vec<&str>,
