@@ -54,13 +54,12 @@ pub async fn poll_endpoint<P: StreamStatusProvider>(
                         }
                     },
                     Err(e) => {
-                        // TODO: We should consider exiting the loop after X number of errors, but it introduces
-                        // similar issues to exiting on no keys, as we have to notify the caller in some way
                         println!("Failed to get stream statuses for host {host}! Error: {:?}", e);
+
                         remaining_errors -= 1;
                         if remaining_errors <= 0 {
                             println!("Worker for host {host} has gone over the max error count. Closing loop.");
-                            break; // Break the loop and return
+                            break; // Break the loop and to remove the worker from the dispatcher
                         }
                     }
                 }
