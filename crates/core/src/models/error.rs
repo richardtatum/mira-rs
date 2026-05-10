@@ -2,4 +2,5 @@
 pub enum CoreError {
     HttpError(String),
     ConfigError(String),
+    PersistenceError(String),
 }

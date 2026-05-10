@@ -6,4 +6,5 @@ pub mod ports;
 pub use models::error::CoreError;
 pub use models::status::{StreamInfo, StreamStatus};
 pub use ports::inbound::AsyncCallback;
+pub use ports::outbound::PersistenceProvider;
 pub use ports::outbound::StreamStatusProvider;
