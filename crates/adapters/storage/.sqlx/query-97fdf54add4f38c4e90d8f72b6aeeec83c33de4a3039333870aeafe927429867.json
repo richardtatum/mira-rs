@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id, url, auth_header, guild_id, created_by\n            FROM host\n            WHERE guild_id = ?\n            ORDER BY url",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "url",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "auth_header",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "guild_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_by",
+        "ordinal": 4,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "97fdf54add4f38c4e90d8f72b6aeeec83c33de4a3039333870aeafe927429867"
+}

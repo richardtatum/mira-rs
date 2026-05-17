@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO stream (subscription_id, status, viewer_count, message_id, start_time)\n                VALUES (?, ?, ?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "cedabff0784a43d9efb1dbfd6e82e876518d1dc10314f1ed113c1cedebc7f7f9"
+}
