@@ -27,10 +27,11 @@ impl PersistenceProvider for SqliteClient {
         let hosts = sqlx::query_as!(
             Host,
             r#"
-            SELECT id, url, auth_header, guild_id, created_by
-            FROM host
-            WHERE guild_id = ?
-            ORDER BY url"#,
+                SELECT id, url, auth_header, guild_id, created_by
+                FROM host
+                WHERE guild_id = ?
+                ORDER BY url
+            "#,
             guild_id
         )
         .fetch_all(&self.pool)
@@ -49,8 +50,8 @@ impl PersistenceProvider for SqliteClient {
     ) -> Result<i64, CoreError> {
         let subscription_id = sqlx::query!(
             r#"
-            INSERT INTO subscription (host_id, `key`, channel_id, created_by)
-            VALUES (?, ?, ?, ?)
+                INSERT INTO subscription (host_id, `key`, channel_id, created_by)
+                VALUES (?, ?, ?, ?)
             "#,
             host_id,
             key,
