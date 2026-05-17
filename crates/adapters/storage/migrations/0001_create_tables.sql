@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS subscription (
 CREATE TABLE IF NOT EXISTS stream (
     id INTEGER NOT NULL PRIMARY KEY NOT NULL,
     subscription_id INTEGER NOT NULL,
-    status INTEGER NOT NULL,
+    status TEXT NOT NULL,
     viewer_count INTEGER DEFAULT 0 NOT NULL,
     message_id INTEGER NOT NULL,
     playing TEXT NULL,
