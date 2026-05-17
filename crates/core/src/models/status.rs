@@ -1,5 +1,7 @@
+use chrono::{DateTime, Utc};
+
 pub struct StreamInfo {
-    pub started: String,
+    pub started: DateTime<Utc>,
     pub viewers: u32,
 }
 
@@ -16,10 +18,10 @@ impl StreamStatus {
         }
     }
 
-    pub fn from_db(status: &str, started: Option<String>, viewers: Option<u32>) -> Self {
+    pub fn from_db(status: &str, started: Option<DateTime<Utc>>, viewers: Option<u32>) -> Self {
         match status {
             "online" => StreamStatus::Online(StreamInfo {
-                started: started.unwrap_or_default(),
+                started: started.unwrap_or_else(Utc::now),
                 viewers: viewers.unwrap_or(0),
             }),
             _ => StreamStatus::Offline,
@@ -33,7 +35,8 @@ impl std::fmt::Display for StreamStatus {
             StreamStatus::Online(info) => write!(
                 f,
                 "Online. Started: {}, viewers: {}",
-                info.started, info.viewers
+                info.started.format("%d/%m/%Y, %H:%M"),
+                info.viewers
             ),
             StreamStatus::Offline => write!(f, "Offline"),
         }

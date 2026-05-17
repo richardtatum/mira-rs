@@ -1444,6 +1444,7 @@ name = "mira-core"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "dashmap 6.1.0",
  "tokio",
 ]
@@ -1452,6 +1453,7 @@ dependencies = [
 name = "mira-discord"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "mira-core",
  "mira-monitor",
  "poise",
