@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
+use mira_core::PersistenceProvider;
 use mira_monitor::StreamMonitor;
 
 pub struct Data {
     pub monitor: Arc<StreamMonitor>,
-    // host_provider: from db
+    pub persistence: Arc<dyn PersistenceProvider>,
 }
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;

@@ -1,5 +1,8 @@
 use core::time;
+use std::collections::HashMap;
 use std::env;
+
+use mira_core::models::persistence::Host;
 
 use crate::{Context, Error, notifier::DiscordNotifier};
 use poise::serenity_prelude::{
@@ -12,10 +15,27 @@ pub async fn subscribe(
     ctx: Context<'_>,
     #[description = "Which key to subscribe to"] key: String,
 ) -> Result<(), Error> {
-    let hosts = vec!["https://b.siobud.com", "https://stream.tatum.sh"]; // Grab this from ctx.data().host_provider
-    let options = hosts
+    let guild_id = ctx.guild_id().unwrap(); // TODO: This should return an error instead
+    let user_id = ctx.author().id;
+    let channel_id = ctx.channel_id();
+
+    println!("GuildId: {}", guild_id);
+
+    let hosts: HashMap<i64, Host> = ctx
+        .data()
+        .persistence
+        .get_hosts(guild_id.get() as i64)
+        .await
+        .unwrap() // TODO: Map this into an error
         .into_iter()
-        .map(|host| CreateSelectMenuOption::new(host, host))
+        .map(|h| (h.id, h))
+        .collect();
+
+    println!("Available hosts: {:?}", hosts);
+
+    let options = hosts
+        .values()
+        .map(|host| CreateSelectMenuOption::new(&host.url, host.id.to_string()))
         .collect();
 
     let reply = {
@@ -34,7 +54,6 @@ pub async fn subscribe(
 
     ctx.send(reply).await?;
 
-    let user_id = ctx.author().id;
     while let Some(interaction) =
         serenity::ComponentInteractionCollector::new(ctx.serenity_context())
             .timeout(time::Duration::from_secs(120))
@@ -46,25 +65,37 @@ pub async fn subscribe(
             _ => None,
         };
 
-        if let Some(host) = selected {
-            println!("Selected host: {}", host);
+        if let Some(value) = selected {
+            let host_id: i64 = value.parse().unwrap();
+            let host = hosts.get(&host_id).unwrap();
 
-            // This is all WIP test stuff.
-            let token = env::var("BROADCAST_BOX_AUTH_TOKEN").expect("Missing auth token!");
             let http = ctx.serenity_context().http.clone();
-            let channel_id = ctx.channel_id();
             let notifier = DiscordNotifier::new(key.clone(), channel_id, http);
 
+            let subscription_id = ctx
+                .data()
+                .persistence
+                .add_subscription(
+                    host_id.clone(),
+                    key.clone(),
+                    channel_id.get() as i64,
+                    user_id.get() as i64,
+                )
+                .await
+                .unwrap(); // TODO: Fix this
+
             ctx.data().monitor.register_stream(
-                host.clone(),
-                Some(token),
+                host.url.clone(),
+                host.auth_header.clone(),
                 key.clone(),
                 notifier.into_callback(),
             );
 
+            println!("Subscribed! {subscription_id}");
+
             let message = serenity::CreateInteractionResponse::UpdateMessage(
                 CreateInteractionResponseMessage::new()
-                    .content(format!("Subscribed to '{key}' on {host}"))
+                    .content(format!("Subscribed to '{0}' on {1}", key, host.url))
                     .components(vec![]),
             );
 

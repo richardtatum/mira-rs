@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use mira_discord::{Data, Error, commands};
 use mira_monitor::StreamMonitor;
+use mira_storage::SqliteClient;
 use poise::serenity_prelude;
 
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
@@ -43,8 +44,10 @@ async fn main() {
             Box::pin(async move {
                 println!("Logged in as {}", ready.user.name);
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                let database_url = env::var("DATABASE_URL").expect("Missing database url!");
                 let data = Data {
                     monitor: Arc::new(StreamMonitor::new(None)),
+                    persistence: Arc::new(SqliteClient::new(database_url).await?),
                 };
                 Ok(data)
             })
