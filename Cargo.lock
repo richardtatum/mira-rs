@@ -1464,6 +1464,7 @@ version = "0.1.0"
 dependencies = [
  "mira-discord",
  "mira-monitor",
+ "mira-storage",
  "poise",
  "tokio",
 ]
@@ -1483,6 +1484,7 @@ dependencies = [
  "async-trait",
  "mira-core",
  "sqlx",
+ "tokio",
 ]
 
 [[package]]
