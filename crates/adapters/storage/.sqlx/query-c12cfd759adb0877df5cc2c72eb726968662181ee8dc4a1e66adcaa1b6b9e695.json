@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT id, key, host_guild_id, channel_id, message_id, playing\n                FROM subscription\n                WHERE host_guild_id = ?\n                AND key = ?\n                AND channel_id = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "key",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "host_guild_id",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "channel_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "message_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "playing",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "c12cfd759adb0877df5cc2c72eb726968662181ee8dc4a1e66adcaa1b6b9e695"
+}

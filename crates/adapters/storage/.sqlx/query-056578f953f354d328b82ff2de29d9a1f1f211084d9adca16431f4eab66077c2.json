@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                UPDATE subscription\n                SET message_id = NULL, playing = NULL\n                WHERE id = ?\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "056578f953f354d328b82ff2de29d9a1f1f211084d9adca16431f4eab66077c2"
+}

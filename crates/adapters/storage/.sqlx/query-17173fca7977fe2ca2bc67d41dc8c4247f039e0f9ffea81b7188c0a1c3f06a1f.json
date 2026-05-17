@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT id, url, auth_header, guild_id, created_by\n            FROM host\n            WHERE guild_id = ?\n            ORDER BY url",
+  "query": "\n                SELECT h.id, h.url, h.auth_header, hg.id AS host_guild_id \n                FROM host h\n                INNER JOIN host_guild hg ON hg.host_id = h.id \n                WHERE hg.guild_id = ?\n                ORDER BY h.url\n            ",
   "describe": {
     "columns": [
       {
@@ -19,13 +19,8 @@
         "type_info": "Text"
       },
       {
-        "name": "guild_id",
+        "name": "host_guild_id",
         "ordinal": 3,
-        "type_info": "Integer"
-      },
-      {
-        "name": "created_by",
-        "ordinal": 4,
         "type_info": "Integer"
       }
     ],
@@ -36,9 +31,8 @@
       false,
       false,
       true,
-      false,
       false
     ]
   },
-  "hash": "97fdf54add4f38c4e90d8f72b6aeeec83c33de4a3039333870aeafe927429867"
+  "hash": "17173fca7977fe2ca2bc67d41dc8c4247f039e0f9ffea81b7188c0a1c3f06a1f"
 }

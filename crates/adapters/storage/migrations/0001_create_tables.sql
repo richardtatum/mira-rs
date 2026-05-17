@@ -3,40 +3,32 @@ CREATE TABLE IF NOT EXISTS host (
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     url TEXT NOT NULL UNIQUE,
     auth_header TEXT,
+    created_by INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS host_guild (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    host_id INTEGER NOT NULL,
     guild_id INTEGER NOT NULL,
     created_by INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    UNIQUE(url, guild_id)
+        
+    FOREIGN KEY (host_id) REFERENCES host(id),
+    UNIQUE (host_id, guild_id)
 );
 
 -- Subscriptions table
 CREATE TABLE IF NOT EXISTS subscription (
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    host_id INTEGER NOT NULL,
     key TEXT NOT NULL,
+    host_guild_id INTEGER NOT NULL,
     channel_id INTEGER NOT NULL,
+    message_id INTEGER NULL,
+    playing TEXT NULL,
     created_by INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (host_id) REFERENCES host(id) ON DELETE CASCADE,
-    UNIQUE(host_id, key)
+    FOREIGN KEY (host_guild_id) REFERENCES host_guild(id) ON DELETE CASCADE,
+    UNIQUE(host_guild_id, key, channel_id)
 );
-
-CREATE TABLE IF NOT EXISTS stream (
-    id INTEGER NOT NULL PRIMARY KEY NOT NULL,
-    subscription_id INTEGER NOT NULL,
-    status TEXT NOT NULL,
-    viewer_count INTEGER DEFAULT 0 NOT NULL,
-    message_id INTEGER NOT NULL,
-    playing TEXT NULL,
-    start_time TEXT NOT NULL,
-    end_time TEXT NULL,
-
-    FOREIGN KEY (subscription_id) REFERENCES subscription(id) ON DELETE CASCADE,
-    UNIQUE (subscription_id)
-);
-
--- Index for faster lookups
-CREATE INDEX IF NOT EXISTS idx_subscription_key ON subscription(key);
-CREATE INDEX IF NOT EXISTS idx_subscription_channel ON subscription(channel_id);
