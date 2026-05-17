@@ -27,10 +27,11 @@ impl PersistenceProvider for SqliteClient {
         let hosts = sqlx::query_as!(
             Host,
             r#"
-                SELECT id, url, auth_header, guild_id, created_by
-                FROM host
-                WHERE guild_id = ?
-                ORDER BY url
+                SELECT h.id, h.url, h.auth_header, hg.id AS host_guild_id 
+                FROM host h
+                INNER JOIN host_guild hg ON hg.host_id = h.id 
+                WHERE hg.guild_id = ?
+                ORDER BY h.url
             "#,
             guild_id
         )
@@ -43,18 +44,18 @@ impl PersistenceProvider for SqliteClient {
 
     async fn add_subscription(
         &self,
-        host_id: i64,
         key: String,
+        host_guild_id: i64,
         channel_id: i64,
         created_by: i64,
     ) -> Result<i64, CoreError> {
         let subscription_id = sqlx::query!(
             r#"
-                INSERT INTO subscription (host_id, `key`, channel_id, created_by)
+                INSERT INTO subscription (`key`, host_guild_id, channel_id, created_by)
                 VALUES (?, ?, ?, ?)
             "#,
-            host_id,
             key,
+            host_guild_id,
             channel_id,
             created_by
         )
@@ -66,32 +67,67 @@ impl PersistenceProvider for SqliteClient {
         Ok(subscription_id)
     }
 
-    async fn add_stream(
+    async fn get_subscription(
+        &self,
+        key: String,
+        host_guild_id: i64,
+        channel_id: i64,
+    ) -> Result<Subscription, CoreError> {
+        let subscription = sqlx::query_as!(
+            Subscription,
+            r#"
+                SELECT id, key, host_guild_id, channel_id, message_id, playing
+                FROM subscription
+                WHERE host_guild_id = ?
+                AND key = ?
+                AND channel_id = ?
+            "#,
+            host_guild_id,
+            key,
+            channel_id
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
+
+        Ok(subscription)
+    }
+
+    async fn set_subscription_message(
         &self,
         subscription_id: i64,
-        status: StreamStatus,
-        viewer_count: i64,
         message_id: i64,
-        start_time: String,
-    ) -> Result<i64, CoreError> {
-        let db_status = status.to_db_string();
-        let stream_id = sqlx::query!(
+    ) -> Result<(), CoreError> {
+        sqlx::query!(
             r#"
-                INSERT INTO stream (subscription_id, status, viewer_count, message_id, start_time)
-                VALUES (?, ?, ?, ?, ?)
+                UPDATE subscription
+                SET message_id = ?
+                WHERE id = ?
             "#,
-            subscription_id,
-            db_status,
-            viewer_count,
             message_id,
-            start_time
+            subscription_id
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| CoreError::PersistenceError(e.to_string()))?
-        .last_insert_rowid();
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
 
-        Ok(stream_id)
+        Ok(())
+    }
+
+    async fn clear_subscription_message(&self, subscription_id: i64) -> Result<(), CoreError> {
+        sqlx::query!(
+            r#"
+                UPDATE subscription
+                SET message_id = NULL, playing = NULL
+                WHERE id = ?
+            "#,
+            subscription_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
+
+        Ok(())
     }
 }
 

@@ -70,14 +70,21 @@ pub async fn subscribe(
             let host = hosts.get(&host_id).unwrap();
 
             let http = ctx.serenity_context().http.clone();
-            let notifier = DiscordNotifier::new(key.clone(), channel_id, http);
+            let persistence = ctx.data().persistence.clone();
+            let notifier = DiscordNotifier::new(
+                key.clone(),
+                host.host_guild_id.clone(),
+                channel_id,
+                http,
+                persistence,
+            );
 
             let subscription_id = ctx
                 .data()
                 .persistence
                 .add_subscription(
-                    host_id.clone(),
                     key.clone(),
+                    host.host_guild_id.clone(),
                     channel_id.get() as i64,
                     user_id.get() as i64,
                 )

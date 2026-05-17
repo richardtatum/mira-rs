@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::models::error::CoreError;
-use crate::models::persistence::Host;
+use crate::models::persistence::{Host, Subscription};
 use crate::models::status::StreamStatus;
 use async_trait::async_trait;
 
@@ -22,20 +22,26 @@ pub trait PersistenceProvider: Send + Sync {
 
     async fn add_subscription(
         &self,
-        host_id: i64,
         key: String,
+        host_guild_id: i64,
         channel_id: i64,
         created_by: i64,
     ) -> Result<i64, CoreError>;
 
-    async fn add_stream(
+    async fn get_subscription(
+        &self,
+        key: String,
+        host_guild_id: i64,
+        channel_id: i64,
+    ) -> Result<Subscription, CoreError>;
+
+    async fn set_subscription_message(
         &self,
         subscription_id: i64,
-        status: StreamStatus,
-        viewer_count: i64,
         message_id: i64,
-        start_time: String,
-    ) -> Result<i64, CoreError>;
+    ) -> Result<(), CoreError>;
+
+    async fn clear_subscription_message(&self, subscription_id: i64) -> Result<(), CoreError>;
 
     // async fn get_subscriptions(&self, host_url: String) -> Vec<Subscription>;
 }
