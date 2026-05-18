@@ -3,10 +3,17 @@ use std::collections::HashMap;
 
 use mira_core::Host;
 
-use crate::{Context, Error, notifier::DiscordNotifier};
-use poise::serenity_prelude::{
-    self as serenity, ComponentInteractionDataKind, CreateInteractionResponseMessage,
-    CreateSelectMenuOption,
+use crate::{
+    Context, Error,
+    notifier::DiscordNotifier,
+    templates::{error_embed, success_embed},
+};
+use poise::{
+    CreateReply,
+    serenity_prelude::{
+        self as serenity, ComponentInteractionDataKind, CreateInteractionResponseMessage,
+        CreateSelectMenuOption,
+    },
 };
 
 #[poise::command(slash_command)]
@@ -29,6 +36,16 @@ pub async fn subscribe(
         .into_iter()
         .map(|h| (h.id, h))
         .collect();
+
+    if hosts.is_empty() {
+        let embed = error_embed(
+            "Subscribe Failed",
+            "No available hosts found. Please add a host first with /host",
+        );
+
+        ctx.send(CreateReply::default().embed(embed)).await?;
+        return Ok(());
+    }
 
     println!("Available hosts: {:?}", hosts);
 
@@ -94,9 +111,18 @@ pub async fn subscribe(
 
             println!("Subscribed! {subscription_id}");
 
+            let embed = success_embed(
+                "Success",
+                format!(
+                    "Subscribed to {}/{}. You will be notified in this channel when they are next online.",
+                    host.url, key
+                ),
+            );
+
             let message = serenity::CreateInteractionResponse::UpdateMessage(
                 CreateInteractionResponseMessage::new()
-                    .content(format!("Subscribed to '{0}' on {1}", key, host.url))
+                    .embed(embed)
+                    .content("")
                     .components(vec![]),
             );
 
