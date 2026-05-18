@@ -7,12 +7,14 @@ use poise::serenity_prelude::{
     self as serenity, CreateEmbed, CreateEmbedFooter, CreateMessage, EditMessage, MessageId,
 };
 
-use mira_core::{AsyncCallback, PersistenceProvider, StreamInfo, StreamStatus};
+use mira_core::{AsyncCallback, Host, PersistenceProvider, StreamInfo, StreamStatus};
 use serenity::all::{ChannelId, Http};
+
+const EMPTY_STR: &str = "\u{200B}";
 
 pub struct DiscordNotifier {
     key: String,
-    host_guild_id: i64,
+    host: Host,
     channel_id: ChannelId,
     http: Arc<Http>,
     persistence: Arc<dyn PersistenceProvider>,
@@ -21,14 +23,14 @@ pub struct DiscordNotifier {
 impl DiscordNotifier {
     pub fn new(
         key: String,
-        host_guild_id: i64,
+        host: Host,
         channel_id: ChannelId,
         http: Arc<Http>,
         persistence: Arc<dyn PersistenceProvider>,
     ) -> Self {
         Self {
             key,
-            host_guild_id,
+            host,
             channel_id,
             http,
             persistence,
@@ -45,7 +47,7 @@ impl DiscordNotifier {
                 let channel_id_i64 = this.channel_id.get() as i64;
                 let subscription = this
                     .persistence
-                    .get_subscription(this.key.clone(), this.host_guild_id, channel_id_i64)
+                    .get_subscription(this.key.clone(), this.host.host_guild_id, channel_id_i64)
                     .await
                     .unwrap();
 
@@ -82,14 +84,19 @@ impl DiscordNotifier {
         subscription_id: i64,
     ) -> Result<(), serenity::Error> {
         let embed = self.online_embed(info, playing);
+
+        // Send a new message and retain it's id
         let message = self
             .channel_id
             .send_message(&self.http, CreateMessage::new().embed(embed))
             .await?;
+
+        // Store the id against the subscription so we know what to edit for updates
         self.persistence
             .set_subscription_message(subscription_id, message.id.get() as i64)
             .await
             .unwrap();
+
         Ok(())
     }
 
@@ -101,9 +108,11 @@ impl DiscordNotifier {
     ) -> Result<(), serenity::Error> {
         let embed = self.online_embed(info, playing);
         let message = MessageId::new(message_id as u64);
+
         self.channel_id
             .edit_message(&self.http, message, EditMessage::new().embed(embed))
             .await?;
+
         Ok(())
     }
 
@@ -115,13 +124,18 @@ impl DiscordNotifier {
     ) -> Result<(), serenity::Error> {
         let embed = self.offline_embed(playing);
         let message = MessageId::new(message_id as u64);
+
+        // Update the message in the channel
         self.channel_id
             .edit_message(&self.http, message, EditMessage::new().embed(embed))
             .await?;
+
+        // Clear the messageId and playing value from the db so the next time a stream starts it sends a new message
         self.persistence
             .clear_subscription_message(subscription_id)
             .await
             .unwrap();
+
         Ok(())
     }
 
@@ -130,12 +144,17 @@ impl DiscordNotifier {
         let hours = duration.num_hours();
         let minutes = duration.num_minutes() % 60;
         let duration_str = format!("{:02}:{:02}", hours, minutes);
+        let viewer_str = info.viewers.to_string();
+        let link = format!("{}/{}", self.host.url, self.key);
 
         let mut embed = CreateEmbed::new()
             .title("Stream Online")
             .color(0x2ECC71)
             .description(format!("{} is streaming!", self.key))
+            .field(EMPTY_STR, EMPTY_STR, false) // Add a blank line to separate the fields from the description
+            .field("Link", link, false)
             .field("Duration", duration_str, true)
+            .field("Viewers", viewer_str, true)
             .footer(CreateEmbedFooter::new(format!(
                 "Started: {}",
                 info.started.format("%d/%m/%Y, %H:%M")
@@ -150,10 +169,14 @@ impl DiscordNotifier {
 
     fn offline_embed(&self, playing: Option<&str>) -> CreateEmbed {
         let ended = Utc::now().format("%d/%m/%Y, %H:%M").to_string();
+        let link = format!("{}/{}", self.host.url, self.key);
+
         let mut embed = CreateEmbed::new()
             .title("Stream Offline")
             .color(0xE74C3C)
             .description(format!("{} is offline.", self.key))
+            .field("Link", link, false)
+            .field(EMPTY_STR, EMPTY_STR, false) // Add a blank line to separate the fields from the description
             .footer(CreateEmbedFooter::new(format!("Ended: {}", ended)));
 
         if let Some(playing) = playing {

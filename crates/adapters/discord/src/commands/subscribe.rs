@@ -1,8 +1,7 @@
 use core::time;
 use std::collections::HashMap;
-use std::env;
 
-use mira_core::models::persistence::Host;
+use mira_core::Host;
 
 use crate::{Context, Error, notifier::DiscordNotifier};
 use poise::serenity_prelude::{
@@ -67,17 +66,12 @@ pub async fn subscribe(
 
         if let Some(value) = selected {
             let host_id: i64 = value.parse().unwrap();
-            let host = hosts.get(&host_id).unwrap();
+            let host = hosts[&host_id].clone();
 
             let http = ctx.serenity_context().http.clone();
             let persistence = ctx.data().persistence.clone();
-            let notifier = DiscordNotifier::new(
-                key.clone(),
-                host.host_guild_id.clone(),
-                channel_id,
-                http,
-                persistence,
-            );
+            let notifier =
+                DiscordNotifier::new(key.clone(), host.clone(), channel_id, http, persistence);
 
             let subscription_id = ctx
                 .data()
