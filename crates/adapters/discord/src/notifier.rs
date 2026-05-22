@@ -53,6 +53,8 @@ impl DiscordNotifier {
 
                 let playing = subscription.playing.as_deref();
 
+                // Take the current status from the API and pair it with the presence of a message_id to determine the change
+                // If a messageId is populated on a subscription, the stream is currently live. If it's null, it's offline
                 match (status, subscription.message_id) {
                     (StreamStatus::Online(info), Some(message_id)) => {
                         this.stream_update(message_id, &info, playing)
@@ -93,7 +95,7 @@ impl DiscordNotifier {
 
         // Store the id against the subscription so we know what to edit for updates
         self.persistence
-            .set_subscription_message(subscription_id, message.id.get() as i64)
+            .set_subscription_message_id(subscription_id, message.id.get() as i64)
             .await
             .unwrap();
 
@@ -132,7 +134,7 @@ impl DiscordNotifier {
 
         // Clear the messageId and playing value from the db so the next time a stream starts it sends a new message
         self.persistence
-            .clear_subscription_message(subscription_id)
+            .clear_subscription_message_id(subscription_id)
             .await
             .unwrap();
 
