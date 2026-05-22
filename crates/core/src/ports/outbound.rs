@@ -30,13 +30,13 @@ pub trait PersistenceProvider: Send + Sync {
 
     async fn get_subscription(&self, subscription_id: i64) -> Result<Subscription, CoreError>;
 
-    async fn set_subscription_message_id(
+    async fn mark_subscription_online(
         &self,
         subscription_id: i64,
         message_id: i64,
     ) -> Result<(), CoreError>;
 
-    async fn clear_subscription_message_id(&self, subscription_id: i64) -> Result<(), CoreError>;
+    async fn mark_subscription_offline(&self, subscription_id: i64) -> Result<(), CoreError>;
 
     // async fn get_subscriptions(&self, host_url: String) -> Vec<Subscription>;
 }

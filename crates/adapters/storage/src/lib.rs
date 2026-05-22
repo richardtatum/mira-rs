@@ -87,7 +87,7 @@ impl PersistenceProvider for SqliteClient {
         Ok(subscription)
     }
 
-    async fn set_subscription_message_id(
+    async fn mark_subscription_online(
         &self,
         subscription_id: i64,
         message_id: i64,
@@ -108,7 +108,7 @@ impl PersistenceProvider for SqliteClient {
         Ok(())
     }
 
-    async fn clear_subscription_message_id(&self, subscription_id: i64) -> Result<(), CoreError> {
+    async fn mark_subscription_offline(&self, subscription_id: i64) -> Result<(), CoreError> {
         sqlx::query!(
             r#"
                 UPDATE subscription

@@ -138,14 +138,14 @@ impl DiscordNotifier {
     async fn mark_online(&self, message: &Message) -> Result<(), CoreError> {
         let message_id = message.id.get() as i64;
         self.persistence
-            .set_subscription_message_id(self.subscription_id, message_id)
+            .mark_subscription_online(self.subscription_id, message_id)
             .await
     }
 
     // Clear the message_id and playing values from the db to mark it as offline
     async fn mark_offline(&self) -> Result<(), CoreError> {
         self.persistence
-            .clear_subscription_message_id(self.subscription_id)
+            .mark_subscription_offline(self.subscription_id)
             .await
     }
 
