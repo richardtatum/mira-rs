@@ -62,11 +62,17 @@ impl StreamStatusProvider for BroadcastBoxClient {
             .into_iter()
             .map(|key| {
                 let status = if let Some(online) = status_by_key.get(key) {
-                    let viewers = online.sessions.iter().count() as u32;
-                    StreamStatus::Online(StreamInfo {
-                        started: online.stream_start,
-                        viewers,
-                    })
+                    // is_live accepts a value for seconds since the last key frame, defaulting to 10s
+                    // this is open to be defined by config in the future
+                    if online.is_live(None) {
+                        let viewers = online.sessions.iter().count() as u32;
+                        StreamStatus::Online(StreamInfo {
+                            started: online.stream_start,
+                            viewers,
+                        })
+                    } else {
+                        StreamStatus::Offline
+                    }
                 } else {
                     StreamStatus::Offline
                 };

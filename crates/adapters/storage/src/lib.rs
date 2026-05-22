@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use mira_core::{
     CoreError, PersistenceProvider,
-    models::persistence::{Host, StreamState, Subscription, SubscriptionRestore},
+    models::persistence::{Host, StreamState, SubscriptionRestore},
 };
 use sqlx::{migrate::MigrateError, sqlite::SqlitePool};
 

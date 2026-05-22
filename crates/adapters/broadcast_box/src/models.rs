@@ -24,3 +24,15 @@ pub struct StreamSummary {
     pub video_tracks: Vec<VideoTrack>,
     pub sessions: Vec<Session>,
 }
+
+impl StreamSummary {
+    pub fn is_live(&self, max_keyframe_age_secs: Option<i64>) -> bool {
+        let threshold = max_keyframe_age_secs.unwrap_or(10);
+        self.video_tracks
+            .iter()
+            .map(|t| t.last_keyframe)
+            .max()
+            .map(|lk| (Utc::now() - lk).num_seconds() < threshold)
+            .unwrap_or(false)
+    }
+}
