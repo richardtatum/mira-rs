@@ -43,7 +43,7 @@ impl DiscordNotifier {
 
         Box::new(move |status: StreamStatus| {
             let this = this.clone();
-            let subscription_id = this.subscription_id.clone();
+            let subscription_id = this.subscription_id;
 
             Box::pin(async move {
                 let subscription = this
@@ -95,7 +95,7 @@ impl DiscordNotifier {
             .send_message(&self.http, CreateMessage::new().embed(embed))
             .await?;
 
-        self.mark_online(&message).await;
+        self.mark_online(&message).await.unwrap();
 
         Ok(())
     }

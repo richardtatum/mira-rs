@@ -6,7 +6,7 @@ use poise::serenity_prelude::Http;
 
 use crate::notifier::DiscordNotifier;
 
-async fn restore_subscriptions(
+pub async fn restore_subscriptions(
     monitor: Arc<StreamMonitor>,
     persistence: Arc<dyn PersistenceProvider>,
     http: Arc<Http>,
@@ -21,7 +21,7 @@ async fn restore_subscriptions(
         let notifier = DiscordNotifier::new(
             host.clone(),
             key.clone(),
-            subscription_id.clone(),
+            subscription_id,
             http.clone(),
             persistence.clone(),
         );
