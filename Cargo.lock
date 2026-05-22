@@ -1464,6 +1464,7 @@ dependencies = [
 name = "mira-discord-bot"
 version = "0.1.0"
 dependencies = [
+ "mira-core",
  "mira-discord",
  "mira-monitor",
  "mira-storage",

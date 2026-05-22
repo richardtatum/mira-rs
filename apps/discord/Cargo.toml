@@ -9,3 +9,4 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 mira-discord = { path = "../../crates/adapters/discord" }
 mira-storage= { path = "../../crates/adapters/storage" }
 mira-monitor = { path = "../../crates/monitor"}
+mira-core = { path = "../../crates/core"}
