@@ -87,8 +87,6 @@ pub async fn subscribe(
 
             let http = ctx.serenity_context().http.clone();
             let persistence = ctx.data().persistence.clone();
-            let notifier =
-                DiscordNotifier::new(key.clone(), host.clone(), channel_id, http, persistence);
 
             let subscription_id = ctx
                 .data()
@@ -101,6 +99,14 @@ pub async fn subscribe(
                 )
                 .await
                 .unwrap(); // TODO: Fix this
+
+            let notifier = DiscordNotifier::new(
+                host.clone(),
+                key.clone(),
+                subscription_id,
+                http,
+                persistence,
+            );
 
             ctx.data().monitor.register_stream(
                 host.url.clone(),

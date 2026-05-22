@@ -4,34 +4,35 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use poise::serenity_prelude::{
-    self as serenity, CreateEmbed, CreateEmbedFooter, CreateMessage, EditMessage, MessageId,
+    self as serenity, CreateEmbed, CreateEmbedFooter, CreateMessage, EditMessage, Message,
+    MessageId,
 };
 
-use mira_core::{AsyncCallback, Host, PersistenceProvider, StreamInfo, StreamStatus};
+use mira_core::{AsyncCallback, CoreError, Host, PersistenceProvider, StreamInfo, StreamStatus};
 use serenity::all::{ChannelId, Http};
 
 const EMPTY_STR: &str = "\u{200B}";
 
 pub struct DiscordNotifier {
-    key: String,
     host: Host,
-    channel_id: ChannelId,
+    key: String,
+    subscription_id: i64,
     http: Arc<Http>,
     persistence: Arc<dyn PersistenceProvider>,
 }
 
 impl DiscordNotifier {
     pub fn new(
-        key: String,
         host: Host,
-        channel_id: ChannelId,
+        key: String,
+        subscription_id: i64,
         http: Arc<Http>,
         persistence: Arc<dyn PersistenceProvider>,
     ) -> Self {
         Self {
             key,
             host,
-            channel_id,
+            subscription_id,
             http,
             persistence,
         }
@@ -42,32 +43,34 @@ impl DiscordNotifier {
 
         Box::new(move |status: StreamStatus| {
             let this = this.clone();
+            let subscription_id = this.subscription_id.clone();
 
             Box::pin(async move {
-                let channel_id_i64 = this.channel_id.get() as i64;
                 let subscription = this
                     .persistence
-                    .get_subscription(this.key.clone(), this.host.host_guild_id, channel_id_i64)
+                    .get_subscription(subscription_id)
                     .await
                     .unwrap();
 
+                let message_id = subscription.message_id.map(|id| MessageId::new(id as u64));
+                let channel_id = ChannelId::new(subscription.channel_id as u64);
                 let playing = subscription.playing.as_deref();
 
                 // Take the current status from the API and pair it with the presence of a message_id to determine the change
                 // If a messageId is populated on a subscription, the stream is currently live. If it's null, it's offline
-                match (status, subscription.message_id) {
-                    (StreamStatus::Online(info), Some(message_id)) => {
-                        this.stream_update(message_id, &info, playing)
+                match (status, message_id) {
+                    (StreamStatus::Online(info), None) => {
+                        this.stream_online(&channel_id, &info, playing)
                             .await
                             .unwrap();
                     }
-                    (StreamStatus::Online(info), None) => {
-                        this.stream_online(&info, playing, subscription.id)
+                    (StreamStatus::Online(info), Some(message_id)) => {
+                        this.stream_update(&channel_id, &message_id, &info, playing)
                             .await
                             .unwrap();
                     }
                     (StreamStatus::Offline, Some(message_id)) => {
-                        this.stream_offline(message_id, playing, subscription.id)
+                        this.stream_offline(&channel_id, &message_id, playing)
                             .await
                             .unwrap();
                     }
@@ -81,38 +84,33 @@ impl DiscordNotifier {
 
     async fn stream_online(
         &self,
+        channel_id: &ChannelId,
         info: &StreamInfo,
         playing: Option<&str>,
-        subscription_id: i64,
     ) -> Result<(), serenity::Error> {
         let embed = self.online_embed(info, playing);
 
         // Send a new message and retain it's id
-        let message = self
-            .channel_id
+        let message = channel_id
             .send_message(&self.http, CreateMessage::new().embed(embed))
             .await?;
 
-        // Store the id against the subscription so we know what to edit for updates
-        self.persistence
-            .set_subscription_message_id(subscription_id, message.id.get() as i64)
-            .await
-            .unwrap();
+        self.mark_online(&message).await;
 
         Ok(())
     }
 
     async fn stream_update(
         &self,
-        message_id: i64,
+        channel_id: &ChannelId,
+        message_id: &MessageId,
         info: &StreamInfo,
         playing: Option<&str>,
     ) -> Result<(), serenity::Error> {
         let embed = self.online_embed(info, playing);
-        let message = MessageId::new(message_id as u64);
 
-        self.channel_id
-            .edit_message(&self.http, message, EditMessage::new().embed(embed))
+        channel_id
+            .edit_message(&self.http, message_id, EditMessage::new().embed(embed))
             .await?;
 
         Ok(())
@@ -120,25 +118,35 @@ impl DiscordNotifier {
 
     async fn stream_offline(
         &self,
-        message_id: i64,
+        channel_id: &ChannelId,
+        message_id: &MessageId,
         playing: Option<&str>,
-        subscription_id: i64,
     ) -> Result<(), serenity::Error> {
         let embed = self.offline_embed(playing);
-        let message = MessageId::new(message_id as u64);
 
         // Update the message in the channel
-        self.channel_id
-            .edit_message(&self.http, message, EditMessage::new().embed(embed))
+        channel_id
+            .edit_message(&self.http, message_id, EditMessage::new().embed(embed))
             .await?;
 
-        // Clear the messageId and playing value from the db so the next time a stream starts it sends a new message
-        self.persistence
-            .clear_subscription_message_id(subscription_id)
-            .await
-            .unwrap();
+        self.mark_offline().await.unwrap();
 
         Ok(())
+    }
+
+    // Update the database to mark the stream as online and record the message_id for future updates
+    async fn mark_online(&self, message: &Message) -> Result<(), CoreError> {
+        let message_id = message.id.get() as i64;
+        self.persistence
+            .set_subscription_message_id(self.subscription_id, message_id)
+            .await
+    }
+
+    // Clear the message_id and playing values from the db to mark it as offline
+    async fn mark_offline(&self) -> Result<(), CoreError> {
+        self.persistence
+            .clear_subscription_message_id(self.subscription_id)
+            .await
     }
 
     fn online_embed(&self, info: &StreamInfo, playing: Option<&str>) -> CreateEmbed {

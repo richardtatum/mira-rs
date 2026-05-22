@@ -28,12 +28,7 @@ pub trait PersistenceProvider: Send + Sync {
         created_by: i64,
     ) -> Result<i64, CoreError>;
 
-    async fn get_subscription(
-        &self,
-        key: String,
-        host_guild_id: i64,
-        channel_id: i64,
-    ) -> Result<Subscription, CoreError>;
+    async fn get_subscription(&self, subscription_id: i64) -> Result<Subscription, CoreError>;
 
     async fn set_subscription_message_id(
         &self,

@@ -27,9 +27,9 @@ impl PersistenceProvider for SqliteClient {
         let hosts = sqlx::query_as!(
             Host,
             r#"
-                SELECT h.id, h.url, h.auth_header, hg.id AS host_guild_id 
+                SELECT h.id, h.url, h.auth_header, hg.id AS host_guild_id
                 FROM host h
-                INNER JOIN host_guild hg ON hg.host_id = h.id 
+                INNER JOIN host_guild hg ON hg.host_id = h.id
                 WHERE hg.guild_id = ?
                 ORDER BY h.url
             "#,
@@ -69,22 +69,16 @@ impl PersistenceProvider for SqliteClient {
 
     async fn get_subscription(
         &self,
-        key: String,
-        host_guild_id: i64,
-        channel_id: i64,
+        subscription_id: i64
     ) -> Result<Subscription, CoreError> {
         let subscription = sqlx::query_as!(
             Subscription,
             r#"
                 SELECT id, key, host_guild_id, channel_id, message_id, playing
                 FROM subscription
-                WHERE host_guild_id = ?
-                AND key = ?
-                AND channel_id = ?
+                WHERE id = ?
             "#,
-            host_guild_id,
-            key,
-            channel_id
+            subscription_id
         )
         .fetch_one(&self.pool)
         .await
