@@ -19,7 +19,7 @@ impl StreamMonitor {
     pub fn register_stream<F, Fut>(
         &self,
         url: String,
-        auth_token: Option<String>,
+        auth_header: Option<String>,
         key: String,
         f: F,
     ) where
@@ -27,7 +27,7 @@ impl StreamMonitor {
         Fut: Future<Output = ()> + Send + 'static,
     {
         let callback: AsyncCallback = Box::new(move |status| Box::pin(f(status)));
-        let provider = BroadcastBoxClient::new(url.clone(), auth_token);
+        let provider = BroadcastBoxClient::new(url.clone(), auth_header);
         self.dispatcher.register(url, key, provider, callback);
     }
 }

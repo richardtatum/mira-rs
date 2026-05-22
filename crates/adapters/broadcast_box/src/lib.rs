@@ -14,9 +14,9 @@ pub struct BroadcastBoxClient {
 }
 
 impl BroadcastBoxClient {
-    pub fn new(base_url: String, bearer_token: Option<String>) -> Self {
+    pub fn new(base_url: String, auth_header: Option<String>) -> Self {
         let mut headers = HeaderMap::new();
-        if let Some(bearer) = bearer_token {
+        if let Some(bearer) = auth_header {
             let header_value = HeaderValue::from_str(&bearer).unwrap();
             headers.insert(AUTHORIZATION, header_value);
         }
@@ -63,7 +63,10 @@ impl StreamStatusProvider for BroadcastBoxClient {
             .map(|key| {
                 let status = if let Some(online) = status_by_key.get(key) {
                     let viewers = online.sessions.iter().count() as u32;
-                    StreamStatus::Online(StreamInfo { started: online.stream_start, viewers })
+                    StreamStatus::Online(StreamInfo {
+                        started: online.stream_start,
+                        viewers,
+                    })
                 } else {
                     StreamStatus::Offline
                 };
