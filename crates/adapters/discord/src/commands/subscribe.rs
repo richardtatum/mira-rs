@@ -104,6 +104,7 @@ pub async fn subscribe(
                 host.clone(),
                 key.clone(),
                 subscription_id,
+                channel_id.get() as i64,
                 http,
                 persistence,
             );

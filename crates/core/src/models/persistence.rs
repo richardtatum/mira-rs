@@ -6,6 +6,26 @@ pub struct Host {
     pub host_guild_id: i64,
 }
 
+pub enum StreamState {
+    Online {
+        message_id: i64,
+        playing: Option<String>,
+    },
+    Offline,
+}
+
+impl StreamState {
+    pub fn new(message_id: Option<i64>, playing: Option<String>) -> Self {
+        match message_id {
+            Some(id) => StreamState::Online {
+                message_id: id,
+                playing,
+            },
+            None => StreamState::Offline,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Subscription {
     pub id: i64,
@@ -16,15 +36,10 @@ pub struct Subscription {
     pub playing: Option<String>,
 }
 
-impl Subscription {
-    pub fn is_online(&self) -> bool {
-        self.message_id.is_some()
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct SubscriptionRestore {
     pub host: Host,
     pub key: String,
     pub subscription_id: i64,
+    pub channel_id: i64,
 }

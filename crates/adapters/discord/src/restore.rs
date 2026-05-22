@@ -22,11 +22,13 @@ pub async fn restore_subscriptions(
         let host = subscription.host;
         let key = subscription.key;
         let subscription_id = subscription.subscription_id;
+        let channel_id = subscription.channel_id;
 
         let notifier = DiscordNotifier::new(
             host.clone(),
             key.clone(),
             subscription_id,
+            channel_id,
             http.clone(),
             persistence.clone(),
         );

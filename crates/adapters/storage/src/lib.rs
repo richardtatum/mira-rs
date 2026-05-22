@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use mira_core::{
     CoreError, PersistenceProvider,
-    models::persistence::{Host, Subscription, SubscriptionRestore},
+    models::persistence::{Host, StreamState, Subscription, SubscriptionRestore},
 };
 use sqlx::{migrate::MigrateError, sqlite::SqlitePool};
 
@@ -67,11 +67,10 @@ impl PersistenceProvider for SqliteClient {
         Ok(subscription_id)
     }
 
-    async fn get_subscription(&self, subscription_id: i64) -> Result<Subscription, CoreError> {
-        let subscription = sqlx::query_as!(
-            Subscription,
+    async fn get_stream_state(&self, subscription_id: i64) -> Result<StreamState, CoreError> {
+        let row = sqlx::query!(
             r#"
-                SELECT id, key, host_guild_id, channel_id, message_id, playing
+                SELECT message_id, playing
                 FROM subscription
                 WHERE id = ?
             "#,
@@ -81,7 +80,7 @@ impl PersistenceProvider for SqliteClient {
         .await
         .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
 
-        Ok(subscription)
+        Ok(StreamState::new(row.message_id, row.playing))
     }
 
     async fn mark_subscription_online(
@@ -124,7 +123,7 @@ impl PersistenceProvider for SqliteClient {
     async fn get_all_subscriptions(&self) -> Result<Vec<SubscriptionRestore>, CoreError> {
         let results = sqlx::query!(
             r#"
-                SELECT h.id AS host_id, h.url, h.auth_header, hg.id AS host_guild_id, s.key, s.id AS subscription_id
+                SELECT h.id AS host_id, h.url, h.auth_header, hg.id AS host_guild_id, s.key, s.id AS subscription_id, s.channel_id
                 FROM host h
                 INNER JOIN host_guild hg ON hg.host_id = h.id
                 INNER JOIN subscription s ON s.host_guild_id = hg.id
@@ -147,6 +146,7 @@ impl PersistenceProvider for SqliteClient {
                     host,
                     key: row.key,
                     subscription_id: row.subscription_id,
+                    channel_id: row.channel_id,
                 }
             })
             .collect();

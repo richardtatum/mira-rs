@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n                SELECT h.id AS host_id, h.url, h.auth_header, hg.id AS host_guild_id, s.key, s.id AS subscription_id\n                FROM host h\n                INNER JOIN host_guild hg ON hg.host_id = h.id\n                INNER JOIN subscription s ON s.host_guild_id = hg.id\n            ",
+  "query": "\n                SELECT h.id AS host_id, h.url, h.auth_header, hg.id AS host_guild_id, s.key, s.id AS subscription_id, s.channel_id\n                FROM host h\n                INNER JOIN host_guild hg ON hg.host_id = h.id\n                INNER JOIN subscription s ON s.host_guild_id = hg.id\n            ",
   "describe": {
     "columns": [
       {
@@ -32,6 +32,11 @@
         "name": "subscription_id",
         "ordinal": 5,
         "type_info": "Integer"
+      },
+      {
+        "name": "channel_id",
+        "ordinal": 6,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
@@ -43,8 +48,9 @@
       true,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "0c3a3333ad60e49ad2492dd24651f911ac5ffcb20ace17d7a5e11140fdce8118"
+  "hash": "036760715ab805796443a5ae3f14225eb03f84ce51695e3de3cbded0085cf4d1"
 }

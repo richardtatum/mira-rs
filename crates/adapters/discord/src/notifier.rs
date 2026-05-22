@@ -8,7 +8,9 @@ use poise::serenity_prelude::{
     MessageId,
 };
 
-use mira_core::{AsyncCallback, CoreError, Host, PersistenceProvider, StreamInfo, StreamStatus};
+use mira_core::{
+    AsyncCallback, CoreError, Host, PersistenceProvider, StreamInfo, StreamState, StreamStatus,
+};
 use serenity::all::{ChannelId, Http};
 
 const EMPTY_STR: &str = "\u{200B}";
@@ -17,6 +19,7 @@ pub struct DiscordNotifier {
     host: Host,
     key: String,
     subscription_id: i64,
+    channel_id: i64,
     http: Arc<Http>,
     persistence: Arc<dyn PersistenceProvider>,
 }
@@ -26,6 +29,7 @@ impl DiscordNotifier {
         host: Host,
         key: String,
         subscription_id: i64,
+        channel_id: i64,
         http: Arc<Http>,
         persistence: Arc<dyn PersistenceProvider>,
     ) -> Self {
@@ -33,6 +37,7 @@ impl DiscordNotifier {
             key,
             host,
             subscription_id,
+            channel_id,
             http,
             persistence,
         }
@@ -46,36 +51,44 @@ impl DiscordNotifier {
             let subscription_id = this.subscription_id;
 
             Box::pin(async move {
-                let subscription = this
+                let stream_state = this
                     .persistence
-                    .get_subscription(subscription_id)
+                    .get_stream_state(subscription_id)
                     .await
                     .unwrap();
 
-                let message_id = subscription.message_id.map(|id| MessageId::new(id as u64));
-                let channel_id = ChannelId::new(subscription.channel_id as u64);
-                let playing = subscription.playing.as_deref();
+                let channel_id = ChannelId::new(this.channel_id as u64);
 
                 // Take the current status from the API and pair it with the presence of a message_id to determine the change
                 // If a messageId is populated on a subscription, the stream is currently live. If it's null, it's offline
-                match (status, message_id) {
-                    (StreamStatus::Online(info), None) => {
-                        this.stream_online(&channel_id, &info, playing)
+                match (status, stream_state) {
+                    (StreamStatus::Online(info), StreamState::Offline) => {
+                        this.stream_online(&channel_id, &info).await.unwrap();
+                    }
+                    (
+                        StreamStatus::Online(info),
+                        StreamState::Online {
+                            message_id,
+                            playing,
+                        },
+                    ) => {
+                        this.stream_update(&channel_id, &info, message_id, playing)
                             .await
                             .unwrap();
                     }
-                    (StreamStatus::Online(info), Some(message_id)) => {
-                        this.stream_update(&channel_id, &message_id, &info, playing)
+                    (
+                        StreamStatus::Offline,
+                        StreamState::Online {
+                            message_id,
+                            playing,
+                        },
+                    ) => {
+                        this.stream_offline(&channel_id, message_id, playing)
                             .await
                             .unwrap();
                     }
-                    (StreamStatus::Offline, Some(message_id)) => {
-                        this.stream_offline(&channel_id, &message_id, playing)
-                            .await
-                            .unwrap();
-                    }
-                    (StreamStatus::Offline, None) => {
-                        println!("Stream {} is still offline.", this.key);
+                    (StreamStatus::Offline, StreamState::Offline) => {
+                        // no-op. Open to a trace log later
                     }
                 }
             }) as Pin<Box<dyn Future<Output = ()> + Send>>
@@ -86,9 +99,8 @@ impl DiscordNotifier {
         &self,
         channel_id: &ChannelId,
         info: &StreamInfo,
-        playing: Option<&str>,
     ) -> Result<(), serenity::Error> {
-        let embed = self.online_embed(info, playing);
+        let embed = self.online_embed(info, None);
 
         // Send a new message and retain it's id
         let message = channel_id
@@ -103,14 +115,15 @@ impl DiscordNotifier {
     async fn stream_update(
         &self,
         channel_id: &ChannelId,
-        message_id: &MessageId,
         info: &StreamInfo,
-        playing: Option<&str>,
+        message_id: i64,
+        playing: Option<String>,
     ) -> Result<(), serenity::Error> {
-        let embed = self.online_embed(info, playing);
+        let embed = self.online_embed(info, playing.as_deref());
+        let message = MessageId::new(message_id as u64);
 
         channel_id
-            .edit_message(&self.http, message_id, EditMessage::new().embed(embed))
+            .edit_message(&self.http, message, EditMessage::new().embed(embed))
             .await?;
 
         Ok(())
@@ -119,14 +132,15 @@ impl DiscordNotifier {
     async fn stream_offline(
         &self,
         channel_id: &ChannelId,
-        message_id: &MessageId,
-        playing: Option<&str>,
+        message_id: i64,
+        playing: Option<String>,
     ) -> Result<(), serenity::Error> {
-        let embed = self.offline_embed(playing);
+        let embed = self.offline_embed(playing.as_deref());
+        let message = MessageId::new(message_id as u64);
 
         // Update the message in the channel
         channel_id
-            .edit_message(&self.http, message_id, EditMessage::new().embed(embed))
+            .edit_message(&self.http, message, EditMessage::new().embed(embed))
             .await?;
 
         self.mark_offline().await.unwrap();
