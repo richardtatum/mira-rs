@@ -21,3 +21,10 @@ impl Subscription {
         self.message_id.is_some()
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct SubscriptionRestore {
+    pub host: Host,
+    pub key: String,
+    pub subscription_id: i64,
+}

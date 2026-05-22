@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n                SELECT id, key, host_guild_id, channel_id, message_id, playing\n                FROM subscription\n                WHERE host_guild_id = ?\n                AND key = ?\n                AND channel_id = ?\n            ",
+  "query": "\n                SELECT id, key, host_guild_id, channel_id, message_id, playing\n                FROM subscription\n                WHERE id = ?\n            ",
   "describe": {
     "columns": [
       {
@@ -35,7 +35,7 @@
       }
     ],
     "parameters": {
-      "Right": 3
+      "Right": 1
     },
     "nullable": [
       false,
@@ -46,5 +46,5 @@
       true
     ]
   },
-  "hash": "c12cfd759adb0877df5cc2c72eb726968662181ee8dc4a1e66adcaa1b6b9e695"
+  "hash": "47d1cb712d31995a409ad898fa058f803a586706581bf79f74097cb924c342d8"
 }

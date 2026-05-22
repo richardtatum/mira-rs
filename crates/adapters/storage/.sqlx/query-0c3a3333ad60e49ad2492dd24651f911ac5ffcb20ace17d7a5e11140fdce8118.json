@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT h.id AS host_id, h.url, h.auth_header, hg.id AS host_guild_id, s.key, s.id AS subscription_id\n                FROM host h\n                INNER JOIN host_guild hg ON hg.host_id = h.id\n                INNER JOIN subscription s ON s.host_guild_id = hg.id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "host_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "url",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "auth_header",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "host_guild_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "key",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "subscription_id",
+        "ordinal": 5,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0c3a3333ad60e49ad2492dd24651f911ac5ffcb20ace17d7a5e11140fdce8118"
+}

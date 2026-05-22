@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::models::error::CoreError;
-use crate::models::persistence::{Host, Subscription};
+use crate::models::persistence::{Host, Subscription, SubscriptionRestore};
 use crate::models::status::StreamStatus;
 use async_trait::async_trait;
 
@@ -38,5 +38,5 @@ pub trait PersistenceProvider: Send + Sync {
 
     async fn mark_subscription_offline(&self, subscription_id: i64) -> Result<(), CoreError>;
 
-    // async fn get_subscriptions(&self, host_url: String) -> Vec<Subscription>;
+    async fn get_all_subscriptions(&self) -> Result<Vec<SubscriptionRestore>, CoreError>;
 }

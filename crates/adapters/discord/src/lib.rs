@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod restore;
 pub mod types;
 
 pub(crate) mod notifier;

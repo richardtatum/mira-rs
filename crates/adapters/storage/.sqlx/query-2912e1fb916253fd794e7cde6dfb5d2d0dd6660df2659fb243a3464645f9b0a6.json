@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n                SELECT h.id, h.url, h.auth_header, hg.id AS host_guild_id \n                FROM host h\n                INNER JOIN host_guild hg ON hg.host_id = h.id \n                WHERE hg.guild_id = ?\n                ORDER BY h.url\n            ",
+  "query": "\n                SELECT h.id, h.url, h.auth_header, hg.id AS host_guild_id\n                FROM host h\n                INNER JOIN host_guild hg ON hg.host_id = h.id\n                WHERE hg.guild_id = ?\n                ORDER BY h.url\n            ",
   "describe": {
     "columns": [
       {
@@ -34,5 +34,5 @@
       false
     ]
   },
-  "hash": "17173fca7977fe2ca2bc67d41dc8c4247f039e0f9ffea81b7188c0a1c3f06a1f"
+  "hash": "2912e1fb916253fd794e7cde6dfb5d2d0dd6660df2659fb243a3464645f9b0a6"
 }
