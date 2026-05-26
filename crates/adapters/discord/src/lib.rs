@@ -1,5 +1,5 @@
 pub mod commands;
-pub mod restore;
+pub mod subscription;
 pub mod types;
 
 pub(crate) mod notifier;

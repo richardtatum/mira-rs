@@ -2,12 +2,13 @@ use std::env;
 use std::sync::Arc;
 
 use mira_core::PersistenceProvider;
-use mira_discord::{Data, Error, commands, restore::restore_subscriptions};
-use mira_stream_watcher::StreamWatcher;
+use mira_discord::{Data, Error, commands, subscription::SubscriptionHandler};
 use mira_storage::SqliteClient;
 use poise::serenity_prelude;
 
-async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
+async fn on_error<P: PersistenceProvider + 'static>(
+    error: poise::FrameworkError<'_, Data<P>, Error>,
+) {
     // They are many errors that can occur, so we only handle the ones we want to customize
     // and forward the rest to the default handler
     match error {
@@ -46,18 +47,14 @@ async fn main() {
                 println!("Logged in as {}", ready.user.name);
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 let database_url = env::var("DATABASE_URL").expect("Missing database url!");
-                let monitor = Arc::new(StreamWatcher::new(None));
-                let persistence: Arc<dyn PersistenceProvider> =
-                    Arc::new(SqliteClient::new(database_url).await?);
+                let persistence = Arc::new(SqliteClient::new(database_url).await?);
+                let subscription_handler = SubscriptionHandler::new(ctx.http.clone(), persistence);
 
-                // Restore any subscriptions from the database
-                restore_subscriptions(&monitor, &persistence, &ctx.http)
-                    .await
-                    .unwrap();
+                // Restore any existing subscriptions from the db
+                subscription_handler.restore_subscriptions().await.unwrap();
 
                 Ok(Data {
-                    monitor,
-                    persistence,
+                    subscription_handler,
                 })
             })
         })

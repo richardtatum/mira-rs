@@ -1,13 +1,11 @@
-use std::sync::Arc;
-
 use mira_core::PersistenceProvider;
-use mira_stream_watcher::StreamWatcher;
 
-pub struct Data {
-    pub monitor: Arc<StreamWatcher>,
-    pub persistence: Arc<dyn PersistenceProvider>,
+use crate::subscription::SubscriptionHandler;
+
+pub struct Data<P: PersistenceProvider + 'static> {
+    pub subscription_handler: SubscriptionHandler<P>,
 }
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
-pub type Context<'a> = poise::Context<'a, Data, Error>;
-pub type ApplicationContext<'a> = poise::ApplicationContext<'a, Data, Error>;
+pub type Context<'a, P> = poise::Context<'a, Data<P>, Error>;
+pub type ApplicationContext<'a, P> = poise::ApplicationContext<'a, Data<P>, Error>;

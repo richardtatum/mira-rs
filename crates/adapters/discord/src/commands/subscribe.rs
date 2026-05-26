@@ -1,11 +1,10 @@
 use core::time;
 use std::collections::HashMap;
 
-use mira_core::Host;
+use mira_core::{Host, PersistenceProvider};
 
 use crate::{
     Context, Error,
-    notifier::DiscordNotifier,
     templates::{error_embed, success_embed},
 };
 use poise::{
@@ -17,8 +16,8 @@ use poise::{
 };
 
 #[poise::command(slash_command)]
-pub async fn subscribe(
-    ctx: Context<'_>,
+pub async fn subscribe<P: PersistenceProvider + 'static>(
+    ctx: Context<'_, P>,
     #[description = "Which key to subscribe to"] key: String,
 ) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap(); // TODO: This should return an error instead
@@ -29,7 +28,7 @@ pub async fn subscribe(
 
     let hosts: HashMap<i64, Host> = ctx
         .data()
-        .persistence
+        .subscription_handler
         .get_hosts(guild_id.get() as i64)
         .await
         .unwrap() // TODO: Map this into an error
@@ -84,45 +83,18 @@ pub async fn subscribe(
         if let Some(value) = selected {
             let host_id: i64 = value.parse().unwrap();
             let host = hosts[&host_id].clone();
+            let host_url = host.url.clone();
 
-            let http = ctx.serenity_context().http.clone();
-            let persistence = ctx.data().persistence.clone();
-
-            let subscription_id = ctx
-                .data()
-                .persistence
-                .add_subscription(
-                    key.clone(),
-                    host.host_guild_id.clone(),
-                    channel_id.get() as i64,
-                    user_id.get() as i64,
-                )
-                .await
-                .unwrap(); // TODO: Fix this
-
-            let notifier = DiscordNotifier::new(
-                host.clone(),
-                key.clone(),
-                subscription_id,
-                channel_id.get() as i64,
-                http,
-                persistence,
-            );
-
-            ctx.data().monitor.watch(
-                host.url.clone(),
-                host.auth_header.clone(),
-                key.clone(),
-                notifier.into_callback(),
-            );
-
-            println!("Subscribed! {subscription_id}");
+            ctx.data()
+                .subscription_handler
+                .subscribe(host, key.clone(), user_id, channel_id)
+                .await;
 
             let embed = success_embed(
                 "Success",
                 format!(
                     "Subscribed to {}/{}. You will be notified in this channel when they are next online.",
-                    host.url, key
+                    host_url, key
                 ),
             );
 

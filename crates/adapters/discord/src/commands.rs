@@ -1,6 +1,9 @@
+use mira_core::PersistenceProvider;
+
 pub mod subscribe;
 
 // Expose all commands, extend this list as required
-pub fn all() -> Vec<poise::Command<crate::types::Data, crate::types::Error>> {
+pub fn all<P: PersistenceProvider + 'static>()
+-> Vec<poise::Command<crate::types::Data<P>, crate::types::Error>> {
     vec![subscribe::subscribe()]
 }
