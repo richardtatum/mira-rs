@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use mira_core::PersistenceProvider;
 use mira_discord::{Data, Error, commands, restore::restore_subscriptions};
-use mira_monitor::StreamMonitor;
+use mira_stream_watcher::StreamWatcher;
 use mira_storage::SqliteClient;
 use poise::serenity_prelude;
 
@@ -46,7 +46,7 @@ async fn main() {
                 println!("Logged in as {}", ready.user.name);
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 let database_url = env::var("DATABASE_URL").expect("Missing database url!");
-                let monitor = Arc::new(StreamMonitor::new(None)); // Pass the poll_frequency here if required
+                let monitor = Arc::new(StreamWatcher::new(None));
                 let persistence: Arc<dyn PersistenceProvider> =
                     Arc::new(SqliteClient::new(database_url).await?);
 

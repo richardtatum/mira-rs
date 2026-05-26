@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use mira_core::PersistenceProvider;
-use mira_monitor::StreamMonitor;
+use mira_stream_watcher::StreamWatcher;
 
 pub struct Data {
-    pub monitor: Arc<StreamMonitor>,
+    pub monitor: Arc<StreamWatcher>,
     pub persistence: Arc<dyn PersistenceProvider>,
 }
 

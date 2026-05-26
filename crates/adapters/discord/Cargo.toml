@@ -8,4 +8,4 @@ poise = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 chrono = { workspace = true }
 mira-core = { path = "../../core" }
-mira-monitor = { path = "../../monitor"}
+mira-stream-watcher = { path = "../../stream-watcher" }

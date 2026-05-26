@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use mira_broadcast_box::BroadcastBoxClient;
 use mira_core::StreamStatusProvider;
-use mira_monitor::StreamMonitor;
+use mira_stream_watcher::StreamWatcher;
 
 #[derive(Parser)]
 #[command(name = "mira", about = "MIRA CLI")]
@@ -70,8 +70,8 @@ async fn main() {
             auth_token,
             polling_interval,
         } => {
-            let watcher = StreamMonitor::new(polling_interval);
-            watcher.register_stream(url, auth_token, key.clone(), move |status| {
+            let watcher = StreamWatcher::new(polling_interval);
+            watcher.watch(url, auth_token, key.clone(), move |status| {
                 let key = key.clone();
                 let now = chrono::Local::now().format("%H:%M:%S");
                 async move {

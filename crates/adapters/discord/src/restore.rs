@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use mira_core::{CoreError, PersistenceProvider};
-use mira_monitor::StreamMonitor;
+use mira_stream_watcher::StreamWatcher;
 use poise::serenity_prelude::Http;
 
 use crate::notifier::DiscordNotifier;
 
 pub async fn restore_subscriptions(
-    monitor: &StreamMonitor,
+    monitor: &StreamWatcher,
     persistence: &Arc<dyn PersistenceProvider>,
     http: &Arc<Http>,
 ) -> Result<(), CoreError> {
@@ -35,7 +35,7 @@ pub async fn restore_subscriptions(
 
         let url = host.url.clone();
         let auth_header = host.auth_header.clone();
-        monitor.register_stream(url, auth_header, key.clone(), notifier.into_callback());
+        monitor.watch(url, auth_header, key.clone(), notifier.into_callback());
 
         println!(
             "Restored {}/{} ({})",

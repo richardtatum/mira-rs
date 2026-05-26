@@ -109,7 +109,7 @@ pub async fn subscribe(
                 persistence,
             );
 
-            ctx.data().monitor.register_stream(
+            ctx.data().monitor.watch(
                 host.url.clone(),
                 host.auth_header.clone(),
                 key.clone(),

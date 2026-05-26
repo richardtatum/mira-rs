@@ -5,6 +5,7 @@ use crate::models::persistence::{Host, StreamState, SubscriptionRestore};
 use crate::models::status::StreamStatus;
 use async_trait::async_trait;
 
+// Handles accessing the external API, e.g. broadcast box
 #[async_trait]
 pub trait StreamStatusProvider: Send + Sync {
     fn get_host(&self) -> &str;
@@ -15,7 +16,7 @@ pub trait StreamStatusProvider: Send + Sync {
     ) -> Result<HashMap<String, StreamStatus>, CoreError>;
 }
 
-// These traits will need result types
+// Handles persisting data between messages, e.g via sqlite
 #[async_trait]
 pub trait PersistenceProvider: Send + Sync {
     async fn get_hosts(&self, guild_id: i64) -> Result<Vec<Host>, CoreError>;

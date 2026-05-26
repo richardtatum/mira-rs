@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-mira-monitor = { path = "../../crates/monitor" }
+mira-stream-watcher = { path = "../../crates/stream-watcher" }
 mira-core = { path = "../../crates/core" }
 mira-broadcast-box = { path = "../../crates/adapters/broadcast_box" }
 clap = { version = "4", features = ["derive", "env"] }
