@@ -16,6 +16,8 @@ pub trait StreamStatusProvider: Send + Sync {
 // Handles persisting data between messages, e.g via sqlite
 #[async_trait]
 pub trait PersistenceProvider: Send + Sync {
+    async fn add_host(&self, url: String, auth_header: Option<String>, created_by: i64) -> Result<i64, CoreError>;
+
     async fn get_hosts(&self, guild_id: i64) -> Result<Vec<Host>, CoreError>;
 
     async fn add_subscription(

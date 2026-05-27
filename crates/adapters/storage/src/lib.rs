@@ -23,6 +23,25 @@ impl SqliteClient {
 
 #[async_trait]
 impl PersistenceProvider for SqliteClient {
+    async fn add_host(&self, url: String, auth_header: Option<String>, created_by: i64) -> Result<i64, CoreError> {
+        let host_id = sqlx::query_scalar!(
+            r#"
+                INSERT INTO host (url, auth_header, created_by)
+                VALUES (?, ?, ?)
+                ON CONFLICT (url) DO UPDATE SET url = excluded.url
+                RETURNING id
+            "#,
+            url,
+            auth_header,
+            created_by
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
+
+        Ok(host_id)
+    }
+
     async fn get_hosts(&self, guild_id: i64) -> Result<Vec<Host>, CoreError> {
         let hosts = sqlx::query_as!(
             Host,

@@ -19,6 +19,10 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         Self { watcher: StreamWatcher::new(None), notifier: DiscordNotifier::new(http), persistence }
     }
 
+    pub async fn add_host(&self, guild_id: i64, url: String, key: String) -> Result<(), CoreError> {
+        Ok(())
+    }
+
     pub async fn get_hosts(&self, guild_id: i64) -> Result<Vec<Host>, CoreError> {
         self.persistence.get_hosts(guild_id).await
     }
