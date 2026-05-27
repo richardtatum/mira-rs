@@ -74,7 +74,8 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         channel_id: ChannelId,
         stream_url: String,
         key: String,
-    ) -> impl Fn(StreamStatus) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>> + Send + Sync + 'static {
+    ) -> impl Fn(StreamStatus) -> Pin<Box<dyn Future<Output = Result<(), CoreError>> + Send + 'static>> + Send + Sync + 'static
+    {
         let persistence = self.persistence.clone();
         let notifier = self.notifier.clone();
 
@@ -86,14 +87,15 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
             let key = key.clone();
 
             Box::pin(async move {
-                let state = persistence.get_stream_state(subscription_id).await.unwrap();
-                match notifier.notify(status, state, channel_id, stream_url, key).await.unwrap() {
+                let state = persistence.get_stream_state(subscription_id).await?;
+                match notifier.notify(status, state, channel_id, stream_url, key).await? {
                     Some(StateChange::Online { message_id }) => {
-                        persistence.mark_subscription_online(subscription_id, message_id).await.unwrap()
+                        persistence.mark_subscription_online(subscription_id, message_id).await?
                     }
-                    Some(StateChange::Offline) => persistence.mark_subscription_offline(subscription_id).await.unwrap(),
+                    Some(StateChange::Offline) => persistence.mark_subscription_offline(subscription_id).await?,
                     None => {}
                 }
+                Ok(())
             })
         }
     }

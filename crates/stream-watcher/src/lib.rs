@@ -17,7 +17,7 @@ impl StreamWatcher {
     pub fn watch<F, Fut>(&self, url: String, auth_header: Option<String>, key: String, f: F) -> Result<(), CoreError>
     where
         F: Fn(StreamStatus) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = ()> + Send + 'static,
+        Fut: Future<Output = Result<(), CoreError>> + Send + 'static,
     {
         let callback: AsyncCallback = Box::new(move |status| Box::pin(f(status)));
         let provider = BroadcastBoxClient::new(url.clone(), auth_header)?;

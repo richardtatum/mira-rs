@@ -18,7 +18,7 @@ pub async fn poll_endpoint<P: StreamStatusProvider>(
     let mut ticker = interval(polling_interval);
     let mut remaining_errors = errors_until_close.unwrap_or(3);
 
-    loop {
+    'worker: loop {
         tokio::select! {
             // Process any new messages on every loop
             Some(cmd) = rx.recv() => {
@@ -30,7 +30,7 @@ pub async fn poll_endpoint<P: StreamStatusProvider>(
                         callbacks.remove_entry(&key);
                         if callbacks.is_empty() {
                             println!("Callbacks for {host} are now empty. Closing loop.");
-                            break; // Break the loop and return, triggering a cleanup
+                            break 'worker; // break the loop to return and cleanup the worker
                         }
                     },
                 }
@@ -49,17 +49,28 @@ pub async fn poll_endpoint<P: StreamStatusProvider>(
                         // Loop through the callbacks and match the status to provide
                         for (key, cb) in &callbacks {
                             if let Some(status) = statuses.remove(key) {
-                                cb(status).await;
+
+                                // If the callback errors, add it to the count
+                                if let Err(e) = cb(status).await {
+                                    println!("Callback error for key {key}: {e:?}");
+                                    remaining_errors -= 1;
+
+                                    // If the errors have passed the threshold, break the loop to return and cleanup the worker
+                                    if remaining_errors <= 0 {
+                                        println!("Worker for host {host} has gone over the max error count. Closing loop.");
+                                        break 'worker;
+                                    }
+                                }
                             }
                         }
                     },
                     Err(e) => {
                         println!("Failed to get stream statuses for host {host}! Error: {:?}", e);
-
                         remaining_errors -= 1;
+
                         if remaining_errors <= 0 {
                             println!("Worker for host {host} has gone over the max error count. Closing loop.");
-                            break; // Break the loop and to remove the worker from the dispatcher
+                            break 'worker;
                         }
                     }
                 }

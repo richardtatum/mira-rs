@@ -44,7 +44,7 @@ async fn main() {
 
     match cli.command {
         Commands::Status { key, url, auth_token } => {
-            let client = BroadcastBoxClient::new(url, auth_token);
+            let client = BroadcastBoxClient::new(url, auth_token).expect("Failed to create broadcast box client!");
             match client.get_statuses(vec![&key]).await {
                 Ok(status) => {
                     if let Some(stream_status) = status.get(&key) {
@@ -62,13 +62,17 @@ async fn main() {
         }
         Commands::Watch { key, url, auth_token, polling_interval } => {
             let watcher = StreamWatcher::new(polling_interval);
-            watcher.watch(url, auth_token, key.clone(), move |status| {
-                let key = key.clone();
-                let now = chrono::Local::now().format("%H:%M:%S");
-                async move {
-                    println!("[{now}] {key}: {status}");
-                }
-            });
+            watcher
+                .watch(url, auth_token, key.clone(), move |status| {
+                    let key = key.clone();
+                    let now = chrono::Local::now().format("%H:%M:%S");
+                    async move {
+                        println!("[{now}] {key}: {status}");
+                        Ok(())
+                    }
+                })
+                .expect("Watcher failed!");
+
             tokio::signal::ctrl_c().await.unwrap();
         }
     }
