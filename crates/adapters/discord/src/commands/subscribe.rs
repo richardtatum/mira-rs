@@ -77,7 +77,7 @@ pub async fn subscribe<P: PersistenceProvider>(
             let host = hosts[&host_id].clone();
             let host_url = host.url.clone();
 
-            ctx.data().subscription_handler.subscribe(host, key.clone(), user_id, channel_id).await;
+            ctx.data().subscription_handler.subscribe(host, key.clone(), user_id, channel_id).await?;
 
             let embed = success_embed(
                 "Success",

@@ -38,7 +38,7 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         let stream_url = format!("{}/{}", host.url, key);
         let callback = self.build_callback(subscription_id, channel_id, stream_url, key.clone());
 
-        self.watcher.watch(host.url, host.auth_header, key, callback);
+        self.watcher.watch(host.url, host.auth_header, key, callback)?;
 
         println!("Subscribed! {subscription_id}");
 
@@ -60,7 +60,7 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
             let stream_url = format!("{}/{}", host.url, key);
             let callback = self.build_callback(subscription_id, channel_id, stream_url, key.clone());
 
-            self.watcher.watch(host.url, host.auth_header, key.clone(), callback);
+            self.watcher.watch(host.url, host.auth_header, key.clone(), callback)?;
 
             println!("Restored {}/{} ({})", host_url, key, host.host_guild_id);
         }
