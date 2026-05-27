@@ -14,19 +14,19 @@ pub struct BroadcastBoxClient {
 }
 
 impl BroadcastBoxClient {
-    pub fn new(base_url: String, auth_header: Option<String>) -> Self {
+    pub fn new(base_url: String, auth_header: Option<String>) -> Result<Self, CoreError> {
         let mut headers = HeaderMap::new();
-        if let Some(bearer) = auth_header {
-            let header_value = HeaderValue::from_str(&bearer).unwrap();
+        if let Some(auth) = auth_header {
+            let header_value = HeaderValue::from_str(&auth).map_err(|e| CoreError::StreamError(e.to_string()))?;
             headers.insert(AUTHORIZATION, header_value);
         }
 
         let client = reqwest::Client::builder()
             .default_headers(headers)
             .build()
-            .unwrap();
+            .map_err(|e| CoreError::StreamError(e.to_string()))?;
 
-        Self { base_url, client }
+        Ok(Self { base_url, client })
     }
 }
 
@@ -36,27 +36,15 @@ impl StreamStatusProvider for BroadcastBoxClient {
         &self.base_url
     }
 
-    async fn get_statuses(
-        &self,
-        keys: Vec<&str>,
-    ) -> Result<HashMap<String, StreamStatus>, CoreError> {
+    async fn get_statuses(&self, keys: Vec<&str>) -> Result<HashMap<String, StreamStatus>, CoreError> {
         let url = format!("{0}/api/status", self.base_url);
-        let response = self
-            .client
-            .get(url)
-            .send()
-            .await
-            .map_err(|e| CoreError::HttpError(e.to_string()))?;
+        let response = self.client.get(url).send().await.map_err(|e| CoreError::StreamError(e.to_string()))?;
 
-        let statuses = response
-            .json::<Vec<models::StreamSummary>>()
-            .await
-            .map_err(|e| CoreError::HttpError(e.to_string()))?; // Maybe should be a parse error?
+        let statuses =
+            response.json::<Vec<models::StreamSummary>>().await.map_err(|e| CoreError::StreamError(e.to_string()))?; // Maybe should be a parse error?
 
-        let status_by_key: HashMap<String, StreamSummary> = statuses
-            .into_iter()
-            .map(|status| (status.stream_key.clone(), status))
-            .collect();
+        let status_by_key: HashMap<String, StreamSummary> =
+            statuses.into_iter().map(|status| (status.stream_key.clone(), status)).collect();
 
         let result: HashMap<String, StreamStatus> = keys
             .into_iter()
@@ -66,10 +54,7 @@ impl StreamStatusProvider for BroadcastBoxClient {
                     // this is open to be defined by config in the future
                     if online.is_live(None) {
                         let viewers = online.sessions.iter().count() as u32;
-                        StreamStatus::Online(StreamInfo {
-                            started: online.stream_start,
-                            viewers,
-                        })
+                        StreamStatus::Online(StreamInfo { started: online.stream_start, viewers })
                     } else {
                         StreamStatus::Offline
                     }

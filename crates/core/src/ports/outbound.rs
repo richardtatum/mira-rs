@@ -10,10 +10,7 @@ use async_trait::async_trait;
 pub trait StreamStatusProvider: Send + Sync {
     fn get_host(&self) -> &str;
 
-    async fn get_statuses(
-        &self,
-        keys: Vec<&str>,
-    ) -> Result<HashMap<String, StreamStatus>, CoreError>;
+    async fn get_statuses(&self, keys: Vec<&str>) -> Result<HashMap<String, StreamStatus>, CoreError>;
 }
 
 // Handles persisting data between messages, e.g via sqlite
@@ -31,11 +28,7 @@ pub trait PersistenceProvider: Send + Sync {
 
     async fn get_stream_state(&self, subscription_id: i64) -> Result<StreamState, CoreError>;
 
-    async fn mark_subscription_online(
-        &self,
-        subscription_id: i64,
-        message_id: i64,
-    ) -> Result<(), CoreError>;
+    async fn mark_subscription_online(&self, subscription_id: i64, message_id: i64) -> Result<(), CoreError>;
 
     async fn mark_subscription_offline(&self, subscription_id: i64) -> Result<(), CoreError>;
 

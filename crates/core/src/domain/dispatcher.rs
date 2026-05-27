@@ -5,10 +5,10 @@ use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
 
-use crate::StreamStatusProvider;
 use crate::domain::worker::poll_endpoint;
 use crate::models::command::Command;
 use crate::ports::inbound::AsyncCallback;
+use crate::{CoreError, StreamStatusProvider};
 
 pub struct Dispatcher {
     // Dashmap is essentially a ConcurrentHashMap
@@ -18,10 +18,7 @@ pub struct Dispatcher {
 
 impl Dispatcher {
     pub fn new(polling_interval: Option<Duration>) -> Self {
-        Self {
-            workers: Arc::new(DashMap::new()),
-            interval: polling_interval.unwrap_or(Duration::from_secs(30)),
-        }
+        Self { workers: Arc::new(DashMap::new()), interval: polling_interval.unwrap_or(Duration::from_secs(30)) }
     }
 
     pub fn register<P: StreamStatusProvider + 'static>(
@@ -30,7 +27,7 @@ impl Dispatcher {
         key: String,
         provider: P,
         callback: AsyncCallback,
-    ) {
+    ) -> Result<(), CoreError> {
         // See if there is already a worker for this url, otherwise create a new one
         let interval = self.interval;
         let sender = self.workers.entry(url.clone()).or_insert_with(|| {
@@ -46,13 +43,20 @@ impl Dispatcher {
         });
 
         // Register the key with the worker via the message channel
-        sender.send(Command::AddKey(key, callback)).unwrap();
+        sender.send(Command::AddKey(key, callback)).map_err(|e| CoreError::StreamError(e.to_string()))?;
+
+        Ok(())
     }
 
-    pub fn deregister<P: StreamStatusProvider + 'static>(&mut self, url: String, key: String) {
+    pub fn deregister(&mut self, url: String, key: String) -> Result<(), CoreError> {
         if let Some(sender) = self.workers.get(&url) {
-            sender.send(Command::RemoveKey(key)).unwrap();
+            sender.send(Command::RemoveKey(key)).map_err(|e| CoreError::StreamError(e.to_string()))?;
+            return Ok(());
         }
+
+        // Worker no longer exists, just quietly exit
+        println!("No worker is registered for url '{}', so can't deregister key '{}'. Ignoring request", url, key);
+        Ok(())
     }
 
     fn spawn_cleanup_task(&self, handle: JoinHandle<()>, url: String) {

@@ -6,9 +6,7 @@ use mira_discord::{Data, Error, commands, subscription::SubscriptionHandler};
 use mira_storage::SqliteClient;
 use poise::serenity_prelude;
 
-async fn on_error<P: PersistenceProvider + 'static>(
-    error: poise::FrameworkError<'_, Data<P>, Error>,
-) {
+async fn on_error<P: PersistenceProvider>(error: poise::FrameworkError<'_, Data<P>, Error>) {
     // They are many errors that can occur, so we only handle the ones we want to customize
     // and forward the rest to the default handler
     match error {
@@ -31,11 +29,7 @@ async fn main() {
         on_error: |error| Box::pin(on_error(error)),
         pre_command: |ctx| {
             Box::pin(async move {
-                println!(
-                    "Executing command {} for user {}",
-                    ctx.command().qualified_name,
-                    ctx.author().name
-                )
+                println!("Executing command {} for user {}", ctx.command().qualified_name, ctx.author().name)
             })
         },
         ..Default::default()
@@ -51,23 +45,22 @@ async fn main() {
                 let subscription_handler = SubscriptionHandler::new(ctx.http.clone(), persistence);
 
                 // Restore any existing subscriptions from the db
-                subscription_handler.restore_subscriptions().await.unwrap();
+                subscription_handler.restore_subscriptions().await?;
 
-                Ok(Data {
-                    subscription_handler,
-                })
+                Ok(Data { subscription_handler })
             })
         })
         .options(options)
         .build();
 
     let token = env::var("DISCORD_TOKEN").expect("Missing 'DISCORD_TOKEN' env var!");
-    let intents = serenity_prelude::GatewayIntents::non_privileged()
-        | serenity_prelude::GatewayIntents::MESSAGE_CONTENT;
+    let intents =
+        serenity_prelude::GatewayIntents::non_privileged() | serenity_prelude::GatewayIntents::MESSAGE_CONTENT;
 
-    let client = serenity_prelude::ClientBuilder::new(token, intents)
+    let mut client = serenity_prelude::ClientBuilder::new(token, intents)
         .framework(framework)
-        .await;
+        .await
+        .expect("Failed to create client!");
 
-    client.unwrap().start().await.unwrap();
+    client.start().await.expect("Failed to start client!");
 }

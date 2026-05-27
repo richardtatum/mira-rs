@@ -10,17 +10,22 @@ use crate::{
 use poise::{
     CreateReply,
     serenity_prelude::{
-        self as serenity, ComponentInteractionDataKind, CreateInteractionResponseMessage,
-        CreateSelectMenuOption,
+        ComponentInteractionCollector, ComponentInteractionDataKind, CreateActionRow, CreateInteractionResponse,
+        CreateInteractionResponseMessage, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption,
     },
 };
 
 #[poise::command(slash_command)]
-pub async fn subscribe<P: PersistenceProvider + 'static>(
+pub async fn subscribe<P: PersistenceProvider>(
     ctx: Context<'_, P>,
     #[description = "Which key to subscribe to"] key: String,
 ) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().unwrap(); // TODO: This should return an error instead
+    let Some(guild_id) = ctx.guild_id() else {
+        let embed = error_embed("Subscribe Failed", "/subscribe can only be ran from a server channel currently.");
+        ctx.send(CreateReply::default().embed(embed)).await?;
+        return Ok(());
+    };
+
     let user_id = ctx.author().id;
     let channel_id = ctx.channel_id();
 
@@ -30,17 +35,13 @@ pub async fn subscribe<P: PersistenceProvider + 'static>(
         .data()
         .subscription_handler
         .get_hosts(guild_id.get() as i64)
-        .await
-        .unwrap() // TODO: Map this into an error
+        .await?
         .into_iter()
         .map(|h| (h.id, h))
         .collect();
 
     if hosts.is_empty() {
-        let embed = error_embed(
-            "Subscribe Failed",
-            "No available hosts found. Please add a host first with /host",
-        );
+        let embed = error_embed("Subscribe Failed", "No available hosts found. Please add a host first with /host");
 
         ctx.send(CreateReply::default().embed(embed)).await?;
         return Ok(());
@@ -48,32 +49,23 @@ pub async fn subscribe<P: PersistenceProvider + 'static>(
 
     println!("Available hosts: {:?}", hosts);
 
-    let options = hosts
-        .values()
-        .map(|host| CreateSelectMenuOption::new(&host.url, host.id.to_string()))
-        .collect();
+    let options = hosts.values().map(|host| CreateSelectMenuOption::new(&host.url, host.id.to_string())).collect();
 
     let reply = {
-        let menu = serenity::CreateSelectMenu::new(
-            "host-select",
-            serenity::CreateSelectMenuKind::String { options },
-        )
-        .placeholder("Choose a host");
+        let menu =
+            CreateSelectMenu::new("host-select", CreateSelectMenuKind::String { options }).placeholder("Choose a host");
 
-        let components = vec![serenity::CreateActionRow::SelectMenu(menu)];
+        let components = vec![CreateActionRow::SelectMenu(menu)];
 
-        poise::CreateReply::default()
-            .content("Pick an option")
-            .components(components)
+        poise::CreateReply::default().content("Pick an option").components(components)
     };
 
     ctx.send(reply).await?;
 
-    while let Some(interaction) =
-        serenity::ComponentInteractionCollector::new(ctx.serenity_context())
-            .timeout(time::Duration::from_secs(120))
-            .filter(move |i| i.user.id == user_id)
-            .await
+    while let Some(interaction) = ComponentInteractionCollector::new(ctx.serenity_context())
+        .timeout(time::Duration::from_secs(120))
+        .filter(move |i| i.user.id == user_id)
+        .await
     {
         let selected = match &interaction.data.kind {
             ComponentInteractionDataKind::StringSelect { values } => values.get(0),
@@ -81,14 +73,11 @@ pub async fn subscribe<P: PersistenceProvider + 'static>(
         };
 
         if let Some(value) = selected {
-            let host_id: i64 = value.parse().unwrap();
+            let host_id: i64 = value.parse().expect("Selected host_id must be an i64");
             let host = hosts[&host_id].clone();
             let host_url = host.url.clone();
 
-            ctx.data()
-                .subscription_handler
-                .subscribe(host, key.clone(), user_id, channel_id)
-                .await;
+            ctx.data().subscription_handler.subscribe(host, key.clone(), user_id, channel_id).await;
 
             let embed = success_embed(
                 "Success",
@@ -98,16 +87,11 @@ pub async fn subscribe<P: PersistenceProvider + 'static>(
                 ),
             );
 
-            let message = serenity::CreateInteractionResponse::UpdateMessage(
-                CreateInteractionResponseMessage::new()
-                    .embed(embed)
-                    .content("")
-                    .components(vec![]),
+            let message = CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::new().embed(embed).content("").components(vec![]),
             );
 
-            interaction
-                .create_response(&ctx.serenity_context(), message)
-                .await?;
+            interaction.create_response(&ctx.serenity_context(), message).await?;
         };
     }
 

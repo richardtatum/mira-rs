@@ -43,11 +43,7 @@ async fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Status {
-            key,
-            url,
-            auth_token,
-        } => {
+        Commands::Status { key, url, auth_token } => {
             let client = BroadcastBoxClient::new(url, auth_token);
             match client.get_statuses(vec![&key]).await {
                 Ok(status) => {
@@ -64,12 +60,7 @@ async fn main() {
                 }
             }
         }
-        Commands::Watch {
-            key,
-            url,
-            auth_token,
-            polling_interval,
-        } => {
+        Commands::Watch { key, url, auth_token, polling_interval } => {
             let watcher = StreamWatcher::new(polling_interval);
             watcher.watch(url, auth_token, key.clone(), move |status| {
                 let key = key.clone();

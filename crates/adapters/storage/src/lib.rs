@@ -83,11 +83,7 @@ impl PersistenceProvider for SqliteClient {
         Ok(StreamState::new(row.message_id, row.playing))
     }
 
-    async fn mark_subscription_online(
-        &self,
-        subscription_id: i64,
-        message_id: i64,
-    ) -> Result<(), CoreError> {
+    async fn mark_subscription_online(&self, subscription_id: i64, message_id: i64) -> Result<(), CoreError> {
         sqlx::query!(
             r#"
                 UPDATE subscription
