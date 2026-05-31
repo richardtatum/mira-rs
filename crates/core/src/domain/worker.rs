@@ -14,6 +14,7 @@ pub async fn poll_endpoint<P: StreamStatusProvider>(
     errors_until_close: Option<u32>,
 ) {
     let host = status_provider.get_host();
+    // TODO: This callback needs updating to be channelId/key, as multiple people could subscribe to the same url/key
     let mut callbacks: HashMap<String, AsyncCallback> = HashMap::new();
     let mut ticker = interval(polling_interval);
     let mut remaining_errors = errors_until_close.unwrap_or(3);
