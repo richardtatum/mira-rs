@@ -4,6 +4,7 @@ use mira_core::{
     models::persistence::{Host, StreamState, SubscriptionRestore},
 };
 use sqlx::{migrate::MigrateError, sqlite::SqlitePool};
+use uuid::Uuid;
 
 pub struct SqliteClient {
     pool: SqlitePool,
@@ -138,7 +139,8 @@ impl PersistenceProvider for SqliteClient {
     async fn get_all_subscriptions(&self) -> Result<Vec<SubscriptionRestore>, CoreError> {
         let results = sqlx::query!(
             r#"
-                SELECT h.id AS host_id, h.url, h.auth_header, hg.id AS host_guild_id, s.key, s.id AS subscription_id, s.channel_id
+                SELECT h.id AS host_id, h.url, h.auth_header, hg.id AS host_guild_id,
+                       s.key, s.id AS subscription_id, s.channel_id, s.subscription_token
                 FROM host h
                 INNER JOIN host_guild hg ON hg.host_id = h.id
                 INNER JOIN subscription s ON s.host_guild_id = hg.id
@@ -157,35 +159,126 @@ impl PersistenceProvider for SqliteClient {
                     auth_header: row.auth_header,
                     host_guild_id: row.host_guild_id,
                 };
+                let subscription_token = row.subscription_token.as_deref().and_then(|s| Uuid::parse_str(s).ok());
                 SubscriptionRestore {
                     host,
                     key: row.key,
                     subscription_id: row.subscription_id,
                     channel_id: row.channel_id,
+                    subscription_token,
                 }
             })
             .collect();
 
         Ok(subscriptions)
     }
+
+    async fn update_subscription_token(&self, subscription_id: i64, token: Uuid) -> Result<(), CoreError> {
+        let token_str = token.to_string();
+        sqlx::query!(
+            r#"
+                UPDATE subscription
+                SET subscription_token = ?
+                WHERE id = ?
+            "#,
+            token_str,
+            subscription_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use uuid::Uuid;
 
-    #[tokio::test]
-    async fn test_subscription_crud() {
+    async fn setup() -> SqliteClient {
         let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
         let client = SqliteClient { pool };
-
-        // Run migrations
         client.migrate().await.unwrap();
+        client
+    }
 
-        // Create subscription
-        // client
-        //     .add_subscription(1, "test-key".to_string(), 123, 1)
-        //     .await
-        //     .unwrap();
+    #[tokio::test]
+    async fn test_update_subscription_token() {
+        let client = setup().await;
+
+        let host_id = sqlx::query_scalar!(
+            "INSERT INTO host (url, auth_header, created_by) VALUES ('http://test.host', NULL, 1) RETURNING id"
+        )
+        .fetch_one(&client.pool)
+        .await
+        .unwrap();
+
+        let guild_id: i64 = 999;
+        let host_guild_id = sqlx::query_scalar!(
+            "INSERT INTO host_guild (host_id, guild_id, created_by) VALUES (?, ?, 1) RETURNING id",
+            host_id,
+            guild_id
+        )
+        .fetch_one(&client.pool)
+        .await
+        .unwrap();
+
+        let sub_id = sqlx::query_scalar!(
+            "INSERT INTO subscription (key, host_guild_id, channel_id, created_by) VALUES ('stream1', ?, 42, 1) RETURNING id",
+            host_guild_id
+        )
+        .fetch_one(&client.pool)
+        .await
+        .unwrap();
+
+        let token = Uuid::new_v4();
+        client.update_subscription_token(sub_id, token).await.unwrap();
+
+        let stored: Option<String> =
+            sqlx::query_scalar!("SELECT subscription_token FROM subscription WHERE id = ?", sub_id)
+                .fetch_one(&client.pool)
+                .await
+                .unwrap();
+
+        assert_eq!(stored, Some(token.to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_get_all_subscriptions_includes_subscription_token() {
+        let client = setup().await;
+
+        let host_id = sqlx::query_scalar!(
+            "INSERT INTO host (url, auth_header, created_by) VALUES ('http://test.host', NULL, 1) RETURNING id"
+        )
+        .fetch_one(&client.pool)
+        .await
+        .unwrap();
+
+        let guild_id: i64 = 999;
+        let host_guild_id = sqlx::query_scalar!(
+            "INSERT INTO host_guild (host_id, guild_id, created_by) VALUES (?, ?, 1) RETURNING id",
+            host_id,
+            guild_id
+        )
+        .fetch_one(&client.pool)
+        .await
+        .unwrap();
+
+        let sub_id = sqlx::query_scalar!(
+            "INSERT INTO subscription (key, host_guild_id, channel_id, created_by) VALUES ('stream1', ?, 42, 1) RETURNING id",
+            host_guild_id
+        )
+        .fetch_one(&client.pool)
+        .await
+        .unwrap();
+
+        let token = Uuid::new_v4();
+        client.update_subscription_token(sub_id, token).await.unwrap();
+
+        let subscriptions = client.get_all_subscriptions().await.unwrap();
+        assert_eq!(subscriptions.len(), 1);
+        assert_eq!(subscriptions[0].subscription_token, Some(token));
     }
 }

@@ -1,6 +1,6 @@
-use crate::ports::inbound::AsyncCallback;
+use crate::ports::inbound::{AsyncCallback, SubscriptionToken};
 
 pub enum Command {
-    AddKey(String, AsyncCallback),
-    RemoveKey(String),
+    AddKey(String, SubscriptionToken, AsyncCallback),
+    RemoveCallback(SubscriptionToken),
 }

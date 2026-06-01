@@ -8,3 +8,4 @@ async-trait = { workspace = true }
 chrono = { workspace = true }
 dashmap = "6.1.0"
 tokio = { workspace = true }
+uuid = { workspace = true }

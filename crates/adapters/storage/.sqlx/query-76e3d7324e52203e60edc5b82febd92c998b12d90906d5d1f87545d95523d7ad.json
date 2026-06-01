@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO host (url, auth_header, created_by) VALUES ('http://test.host', NULL, 1) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "76e3d7324e52203e60edc5b82febd92c998b12d90906d5d1f87545d95523d7ad"
+}

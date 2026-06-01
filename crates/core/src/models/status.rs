@@ -1,10 +1,12 @@
 use chrono::{DateTime, Utc};
 
+#[derive(Clone)]
 pub struct StreamInfo {
     pub started: DateTime<Utc>,
     pub viewers: u32,
 }
 
+#[derive(Clone)]
 pub enum StreamStatus {
     Online(StreamInfo),
     Offline,

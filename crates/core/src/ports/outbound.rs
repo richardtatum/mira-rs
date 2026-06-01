@@ -4,6 +4,7 @@ use crate::models::error::CoreError;
 use crate::models::persistence::{Host, StreamState, SubscriptionRestore};
 use crate::models::status::StreamStatus;
 use async_trait::async_trait;
+use uuid::Uuid;
 
 // Handles accessing the external API, e.g. broadcast box
 #[async_trait]
@@ -35,4 +36,6 @@ pub trait PersistenceProvider: Send + Sync {
     async fn mark_subscription_offline(&self, subscription_id: i64) -> Result<(), CoreError>;
 
     async fn get_all_subscriptions(&self) -> Result<Vec<SubscriptionRestore>, CoreError>;
+
+    async fn update_subscription_token(&self, subscription_id: i64, token: Uuid) -> Result<(), CoreError>;
 }

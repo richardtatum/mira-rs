@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO subscription (key, host_guild_id, channel_id, created_by) VALUES ('stream1', ?, 42, 1) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c86f59afc4cf57b3b652e62813f8591bc036036aa9ac193e764d4aaf825721b1"
+}

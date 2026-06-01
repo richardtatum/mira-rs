@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 #[derive(Debug, Clone)]
 pub struct Host {
     pub id: i64,
@@ -36,4 +38,5 @@ pub struct SubscriptionRestore {
     pub key: String,
     pub subscription_id: i64,
     pub channel_id: i64,
+    pub subscription_token: Option<Uuid>,
 }

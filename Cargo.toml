@@ -12,7 +12,8 @@ resolver = "2"
 [workspace.dependencies]
 async-trait = "0.1"
 thiserror = "2.0.18"
-tokio = { version = "1.52.1", features = ["macros", "rt-multi-thread", "time"] }
+tokio = { version = "1.52.1", features = ["macros", "rt-multi-thread", "time", "sync"] }
 chrono = "0.4"
 serde = { version = "1", features = ["derive"] }
 poise = "0.6.1"
+uuid = { version = "1", features = ["v4"] }

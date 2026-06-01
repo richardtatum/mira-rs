@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                UPDATE subscription\n                SET watcher_token = ?\n                WHERE id = ?\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "97ab6635c3d2290c6454aa3f7205984beec91040f7f261584eb4637a0f038a6d"
+}

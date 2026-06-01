@@ -8,3 +8,4 @@ async-trait = { workspace = true }
 mira-core = { path = "../../core" }
 tokio = { workspace = true }
 sqlx = { version = "0.8", features = [ "sqlite", "runtime-tokio", "migrate" ] }
+uuid = { workspace = true }

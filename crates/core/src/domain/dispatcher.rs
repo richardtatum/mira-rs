@@ -4,14 +4,14 @@ use dashmap::DashMap;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
+use uuid::Uuid;
 
 use crate::domain::worker::poll_endpoint;
 use crate::models::command::Command;
-use crate::ports::inbound::AsyncCallback;
+use crate::ports::inbound::{AsyncCallback, SubscriptionToken};
 use crate::{CoreError, StreamStatusProvider};
 
 pub struct Dispatcher {
-    // Dashmap is essentially a ConcurrentHashMap
     workers: Arc<DashMap<String, mpsc::UnboundedSender<Command>>>,
     interval: Duration,
 }
@@ -27,35 +27,34 @@ impl Dispatcher {
         key: String,
         provider: P,
         callback: AsyncCallback,
-    ) -> Result<(), CoreError> {
+    ) -> Result<SubscriptionToken, CoreError> {
         // See if there is already a worker for this url, otherwise create a new one
         let interval = self.interval;
         let sender = self.workers.entry(url.clone()).or_insert_with(|| {
             let (tx, rx) = mpsc::unbounded_channel();
-
             let handle = tokio::spawn(poll_endpoint(rx, interval, provider, None));
 
             // Pass the handle and create a task that removes the entry when the function returns
             // Function returns only happens when all keys are empty after a remove
             self.spawn_cleanup_task(handle, url.clone());
-
             tx
         });
 
-        // Register the key with the worker via the message channel
-        sender.send(Command::AddKey(key, callback)).map_err(|e| CoreError::StreamError(e.to_string()))?;
+        // Generate a unique token and register the callback with the worker via the channel
+        let token = Uuid::new_v4();
+        sender.send(Command::AddKey(key, token, callback)).map_err(|e| CoreError::StreamError(e.to_string()))?;
 
-        Ok(())
+        Ok(token)
     }
 
-    pub fn deregister(&mut self, url: String, key: String) -> Result<(), CoreError> {
+    pub fn deregister(&self, url: String, token: SubscriptionToken) -> Result<(), CoreError> {
         if let Some(sender) = self.workers.get(&url) {
-            sender.send(Command::RemoveKey(key)).map_err(|e| CoreError::StreamError(e.to_string()))?;
+            sender.send(Command::RemoveCallback(token)).map_err(|e| CoreError::StreamError(e.to_string()))?;
             return Ok(());
         }
 
         // Worker no longer exists, just quietly exit
-        println!("No worker is registered for url '{}', so can't deregister key '{}'. Ignoring request", url, key);
+        println!("No worker is registered for url '{}', so can't deregister token. Ignoring request", url);
         Ok(())
     }
 
