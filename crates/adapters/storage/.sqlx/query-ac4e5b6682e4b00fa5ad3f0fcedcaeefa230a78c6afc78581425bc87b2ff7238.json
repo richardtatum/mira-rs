@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                UPDATE subscription\n                SET subscription_token = ?\n                WHERE id = ?\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "ac4e5b6682e4b00fa5ad3f0fcedcaeefa230a78c6afc78581425bc87b2ff7238"
+}
