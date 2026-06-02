@@ -48,3 +48,21 @@ pushd crates/adapters/storage && cargo sqlx prepare && popd
 ```
 
 The `.sqlx` cache directory lives inside `crates/adapters/storage/` and should be checked into version control.
+
+## TODO
+
+### Slash Commands
+
+- [x] `/add_host` — register a Broadcast Box host with the guild
+- [ ] `/remove_host` — remove a registered host from the guild
+- [x] `/subscribe` — subscribe to a stream key on a registered host
+- [ ] `/unsubscribe` — unsubscribe from a stream key
+- [ ] `/playing` — show what is currently playing on a host
+- [ ] `/list` — list all subscriptions across all registered guild hosts
+
+### Functionality
+
+- [ ] Full logging — replace `println!` calls with a structured logging framework (e.g. `tracing`)
+- [ ] Tests — unit and integration test coverage across crates
+- [ ] Stream screenshots — capture a thumbnail from the stream and display it in the online/offline embed
+- [ ] IGDB integration — enrich "currently playing" metadata (cover art, genre, release date) via the [IGDB API](https://api-docs.igdb.com/)
