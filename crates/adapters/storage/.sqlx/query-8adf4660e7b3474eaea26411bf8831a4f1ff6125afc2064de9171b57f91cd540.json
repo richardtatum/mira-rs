@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n               INSERT INTO host_guild (host_id, guild_id, auth_header)\n               VALUES (?, ?, ?)\n               ON CONFLICT DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "8adf4660e7b3474eaea26411bf8831a4f1ff6125afc2064de9171b57f91cd540"
+}

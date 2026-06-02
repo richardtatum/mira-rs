@@ -24,16 +24,15 @@ impl SqliteClient {
 
 #[async_trait]
 impl PersistenceProvider for SqliteClient {
-    async fn add_host(&self, url: String, auth_header: Option<String>, created_by: i64) -> Result<i64, CoreError> {
+    async fn add_host(&self, url: String, created_by: i64) -> Result<i64, CoreError> {
         let host_id = sqlx::query_scalar!(
             r#"
-                INSERT INTO host (url, auth_header, created_by)
-                VALUES (?, ?, ?)
+                INSERT INTO host (url, created_by)
+                VALUES (?, ?)
                 ON CONFLICT (url) DO UPDATE SET url = excluded.url
                 RETURNING id
             "#,
             url,
-            auth_header,
             created_by
         )
         .fetch_one(&self.pool)
@@ -43,11 +42,54 @@ impl PersistenceProvider for SqliteClient {
         Ok(host_id)
     }
 
+    async fn link_host(
+        &self,
+        host_id: i64,
+        guild_id: i64,
+        auth_header: Option<String>,
+        created_by: i64,
+    ) -> Result<i64, CoreError> {
+        let host_guild_id = sqlx::query!(
+            r#"
+               INSERT INTO host_guild (host_id, guild_id, auth_header, created_by)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT DO NOTHING
+            "#,
+            host_id,
+            guild_id,
+            auth_header,
+            created_by
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?
+        .last_insert_rowid();
+
+        Ok(host_guild_id)
+    }
+
+    async fn unlink_host(&self, host_id: i64, guild_id: i64) -> Result<(), CoreError> {
+        sqlx::query!(
+            r#"
+                DELETE FROM host_guild
+                WHERE host_id = ?
+                AND guild_id = ?
+            "#,
+            host_id,
+            guild_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
+
+        Ok(())
+    }
+
     async fn get_hosts(&self, guild_id: i64) -> Result<Vec<Host>, CoreError> {
         let hosts = sqlx::query_as!(
             Host,
             r#"
-                SELECT h.id, h.url, h.auth_header, hg.id AS host_guild_id
+                SELECT h.id, h.url, hg.auth_header, hg.id AS host_guild_id
                 FROM host h
                 INNER JOIN host_guild hg ON hg.host_id = h.id
                 WHERE hg.guild_id = ?
@@ -139,7 +181,7 @@ impl PersistenceProvider for SqliteClient {
     async fn get_all_subscriptions(&self) -> Result<Vec<SubscriptionRestore>, CoreError> {
         let results = sqlx::query!(
             r#"
-                SELECT h.id AS host_id, h.url, h.auth_header, hg.id AS host_guild_id,
+                SELECT h.id AS host_id, h.url, hg.auth_header, hg.id AS host_guild_id,
                        s.key, s.id AS subscription_id, s.channel_id, s.subscription_token
                 FROM host h
                 INNER JOIN host_guild hg ON hg.host_id = h.id
@@ -208,12 +250,11 @@ mod tests {
     async fn test_update_subscription_token() {
         let client = setup().await;
 
-        let host_id = sqlx::query_scalar!(
-            "INSERT INTO host (url, auth_header, created_by) VALUES ('http://test.host', NULL, 1) RETURNING id"
-        )
-        .fetch_one(&client.pool)
-        .await
-        .unwrap();
+        let host_id =
+            sqlx::query_scalar!("INSERT INTO host (url, created_by) VALUES ('http://test.host', 1) RETURNING id")
+                .fetch_one(&client.pool)
+                .await
+                .unwrap();
 
         let guild_id: i64 = 999;
         let host_guild_id = sqlx::query_scalar!(
@@ -249,12 +290,11 @@ mod tests {
     async fn test_get_all_subscriptions_includes_subscription_token() {
         let client = setup().await;
 
-        let host_id = sqlx::query_scalar!(
-            "INSERT INTO host (url, auth_header, created_by) VALUES ('http://test.host', NULL, 1) RETURNING id"
-        )
-        .fetch_one(&client.pool)
-        .await
-        .unwrap();
+        let host_id =
+            sqlx::query_scalar!("INSERT INTO host (url, created_by) VALUES ('http://test.host', 1) RETURNING id")
+                .fetch_one(&client.pool)
+                .await
+                .unwrap();
 
         let guild_id: i64 = 999;
         let host_guild_id = sqlx::query_scalar!(

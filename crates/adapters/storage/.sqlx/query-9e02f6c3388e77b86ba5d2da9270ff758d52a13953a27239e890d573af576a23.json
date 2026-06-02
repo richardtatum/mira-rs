@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO host (url, created_by)\n                VALUES (?, ?)\n                ON CONFLICT (url) DO UPDATE SET url = excluded.url\n                RETURNING id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9e02f6c3388e77b86ba5d2da9270ff758d52a13953a27239e890d573af576a23"
+}
