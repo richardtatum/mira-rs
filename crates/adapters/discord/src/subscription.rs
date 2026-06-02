@@ -4,7 +4,8 @@ use std::sync::Arc;
 
 use mira_core::{CoreError, Host, PersistenceProvider, StreamStatus};
 use mira_stream_watcher::StreamWatcher;
-use poise::serenity_prelude::{ChannelId, Http, UserId};
+use poise::serenity_prelude::{ChannelId, GuildId, Http, UserId};
+use url::Url;
 
 use crate::notifier::{DiscordNotifier, StateChange};
 
@@ -19,7 +20,31 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         Self { watcher: StreamWatcher::new(None), notifier: DiscordNotifier::new(http), persistence }
     }
 
-    pub async fn add_host(&self, guild_id: i64, url: String, key: String) -> Result<(), CoreError> {
+    pub async fn add_host(
+        &self,
+        url: Url,
+        auth_header: Option<String>,
+        guild_id: GuildId,
+        user_id: UserId,
+    ) -> Result<(), CoreError> {
+        let guild = guild_id.get() as i64;
+        let user = user_id.get() as i64;
+        let url_str = url.as_str().trim_end_matches('/').to_owned();
+
+        let guild_hosts = self.persistence.get_hosts(guild).await?;
+        if guild_hosts.iter().any(|h| h.url == url_str) {
+            return Err(CoreError::StreamError("Host already exists!".to_string()));
+        }
+
+        // Check the host connects cleanly with the provided data
+        self.watcher.test_host(url_str.clone(), auth_header.clone()).await?;
+
+        // Add the host, if it already exists in the database then its id is returned
+        let host_id = self.persistence.add_host(url_str, user).await?;
+
+        // Link the host to this guild
+        let _ = self.persistence.link_host(host_id, guild, auth_header, user).await?;
+
         Ok(())
     }
 

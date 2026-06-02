@@ -10,3 +10,4 @@ chrono = { workspace = true }
 mira-core = { path = "../../core" }
 mira-stream-watcher = { path = "../../stream-watcher" }
 uuid = { workspace = true }
+url = { workspace = true }
