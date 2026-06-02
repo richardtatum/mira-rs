@@ -1,6 +1,6 @@
 use chrono::Utc;
 use mira_core::StreamInfo;
-use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
+use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter, Timestamp};
 
 const EMPTY_STR: &str = "\u{200B}";
 
@@ -27,7 +27,8 @@ pub fn online_embed(stream_url: &str, key: &str, info: &StreamInfo, playing: Opt
         .field(EMPTY_STR, EMPTY_STR, false) // Add a blank line to separate the fields from the description
         .field("Duration", duration_str, true)
         .field("Viewers", viewer_str, true)
-        .footer(CreateEmbedFooter::new(format!("Started: {}", info.started.format("%d/%m/%Y, %H:%M"))));
+        .footer(CreateEmbedFooter::new("Started"))
+        .timestamp(Timestamp::from(info.started));
 
     if let Some(playing) = playing {
         embed = embed.field("Playing", playing, false);
@@ -37,15 +38,14 @@ pub fn online_embed(stream_url: &str, key: &str, info: &StreamInfo, playing: Opt
 }
 
 pub fn offline_embed(stream_url: &str, key: &str, playing: Option<&str>) -> CreateEmbed {
-    let ended = Utc::now().format("%d/%m/%Y, %H:%M").to_string();
-
     let mut embed = CreateEmbed::new()
         .title("Stream Offline")
         .url(stream_url)
         .color(0xE74C3C)
         .description(format!("{} is offline.", key))
         .field(EMPTY_STR, EMPTY_STR, false) // Add a blank line to separate the fields from the description
-        .footer(CreateEmbedFooter::new(format!("Ended: {}", ended)));
+        .footer(CreateEmbedFooter::new("Ended"))
+        .timestamp(Timestamp::from(Utc::now()));
 
     if let Some(playing) = playing {
         embed = embed.field("Previously Playing", playing, false);
