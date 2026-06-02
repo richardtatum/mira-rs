@@ -12,7 +12,7 @@ use crate::ports::inbound::{AsyncCallback, SubscriptionToken};
 use crate::{CoreError, StreamStatusProvider};
 
 pub struct Dispatcher {
-    workers: Arc<DashMap<String, mpsc::UnboundedSender<Command>>>,
+    workers: Arc<DashMap<(String, Option<String>), mpsc::UnboundedSender<Command>>>,
     interval: Duration,
 }
 
@@ -24,19 +24,22 @@ impl Dispatcher {
     pub fn register<P: StreamStatusProvider + 'static>(
         &self,
         url: String,
+        auth_header: Option<String>,
         key: String,
         provider: P,
         callback: AsyncCallback,
     ) -> Result<SubscriptionToken, CoreError> {
-        // See if there is already a worker for this url, otherwise create a new one
         let interval = self.interval;
-        let sender = self.workers.entry(url.clone()).or_insert_with(|| {
+        let worker_key = (url.clone(), auth_header);
+
+        // See if there is already a worker for this (url, auth_header) pair, otherwise create a new one
+        let sender = self.workers.entry(worker_key.clone()).or_insert_with(|| {
             let (tx, rx) = mpsc::unbounded_channel();
             let handle = tokio::spawn(poll_endpoint(rx, interval, provider, None));
 
             // Pass the handle and create a task that removes the entry when the function returns
             // Function returns only happens when all keys are empty after a remove
-            self.spawn_cleanup_task(handle, url.clone());
+            self.spawn_cleanup_task(handle, worker_key);
             tx
         });
 
@@ -47,8 +50,14 @@ impl Dispatcher {
         Ok(token)
     }
 
-    pub fn deregister(&self, url: String, token: SubscriptionToken) -> Result<(), CoreError> {
-        if let Some(sender) = self.workers.get(&url) {
+    pub fn deregister(
+        &self,
+        url: String,
+        auth_header: Option<String>,
+        token: SubscriptionToken,
+    ) -> Result<(), CoreError> {
+        let worker_key = (url.clone(), auth_header);
+        if let Some(sender) = self.workers.get(&worker_key) {
             sender.send(Command::RemoveCallback(token)).map_err(|e| CoreError::StreamError(e.to_string()))?;
             return Ok(());
         }
@@ -58,11 +67,11 @@ impl Dispatcher {
         Ok(())
     }
 
-    fn spawn_cleanup_task(&self, handle: JoinHandle<()>, url: String) {
+    fn spawn_cleanup_task(&self, handle: JoinHandle<()>, worker_key: (String, Option<String>)) {
         let workers = Arc::clone(&self.workers);
         tokio::spawn(async move {
             let _ = handle.await; // This returns when the 'poll_endpoint' loop is broken
-            workers.remove(&url);
+            workers.remove(&worker_key);
         });
     }
 }
