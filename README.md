@@ -57,7 +57,7 @@ The `.sqlx` cache directory lives inside `crates/adapters/storage/` and should b
 - [ ] `/remove_host` — remove a registered host from the guild
 - [x] `/subscribe` — subscribe to a stream key on a registered host
 - [ ] `/unsubscribe` — unsubscribe from a stream key
-- [ ] `/playing` — show what is currently playing on a host
+- [ ] `/playing` — set what is currently playing on a host
 - [ ] `/list` — list all subscriptions across all registered guild hosts
 
 ### Functionality
