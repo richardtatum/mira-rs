@@ -4,7 +4,7 @@ Mira is a Discord bot for use with the fantastic [Broadcast Box](https://github.
 
 This repo is for the rewrite of Mira in Rust. For the original project click [here](https://github.com/richardtatum/mira).
 
-## Development Setup
+## Development Setup — Discord Bot
 
 ### Prerequisites
 
@@ -48,6 +48,41 @@ pushd crates/adapters/storage && cargo sqlx prepare && popd
 ```
 
 The `.sqlx` cache directory lives inside `crates/adapters/storage/` and should be checked into version control.
+
+## Development Setup — CLI
+
+The CLI can be used to check stream status or watch a stream key directly, without running the bot.
+
+### Environment Variables
+
+Export these or pass them as flags:
+
+```bash
+export BROADCAST_BOX_URL="https://your-broadcast-box-host"
+export BROADCAST_BOX_AUTH_TOKEN="your-token"  # optional
+```
+
+### Commands
+
+**Check if a stream key is currently online:**
+
+```bash
+cargo run -p mira-cli -- status <key>
+```
+
+**Watch a stream key and print status changes to stdout:**
+
+```bash
+cargo run -p mira-cli -- watch <key>
+```
+
+Optionally override the polling interval (in seconds):
+
+```bash
+cargo run -p mira-cli -- watch <key> --polling-interval 10
+```
+
+Press `Ctrl+C` to stop watching.
 
 ## TODO
 
