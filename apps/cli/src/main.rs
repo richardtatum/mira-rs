@@ -1,6 +1,8 @@
+use std::sync::{Arc, Mutex};
+
 use clap::{Parser, Subcommand};
 use mira_broadcast_box::BroadcastBoxClient;
-use mira_core::StreamStatusProvider;
+use mira_core::{StreamStatus, StreamStatusProvider};
 use mira_stream_watcher::StreamWatcher;
 
 #[derive(Parser)]
@@ -62,12 +64,40 @@ async fn main() {
         }
         Commands::Watch { key, url, auth_token, polling_interval } => {
             let watcher = StreamWatcher::new(polling_interval);
+            let curr_status: Arc<Mutex<Option<StreamStatus>>> = Arc::new(Mutex::new(None));
+
             watcher
                 .watch(url, auth_token, key.clone(), move |status| {
                     let key = key.clone();
-                    let now = chrono::Local::now().format("%H:%M:%S");
+                    let curr_status = curr_status.clone();
+
                     async move {
-                        println!("[{now}] {key}: {status}");
+                        let (changed, has_prev) = {
+                            let prev_status = curr_status.lock().unwrap();
+
+                            let changed = match (&*prev_status, &status) {
+                                (None, _) => true,
+                                (Some(StreamStatus::Online(_)), StreamStatus::Online(_)) => true,
+                                (Some(StreamStatus::Online(_)), StreamStatus::Offline) => true,
+                                (Some(StreamStatus::Offline), StreamStatus::Online(_)) => true,
+                                _ => false,
+                            };
+
+                            (changed, prev_status.is_some())
+                        };
+
+                        if changed {
+                            let now = chrono::Local::now().format("%H:%M:%S");
+
+                            // If we have printed a status previously, move up a line
+                            if has_prev {
+                                print!("\x1B[1A\x1B[2K");
+                            }
+
+                            println!("[{now}] {key}: {status}");
+                            *curr_status.lock().unwrap() = Some(status); // Set the latest value of the status
+                        }
+
                         Ok(())
                     }
                 })
