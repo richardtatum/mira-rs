@@ -4,7 +4,10 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use mira_core::{CoreError, StreamInfo, StreamStatus, StreamStatusProvider};
-use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
+use reqwest::{
+    StatusCode,
+    header::{AUTHORIZATION, HeaderMap, HeaderValue},
+};
 
 use crate::models::StreamSummary;
 
@@ -38,7 +41,21 @@ impl StreamStatusProvider for BroadcastBoxClient {
 
     async fn get_statuses(&self, keys: Vec<&str>) -> Result<HashMap<String, StreamStatus>, CoreError> {
         let url = format!("{0}/api/status", self.base_url);
-        let response = self.client.get(url).send().await.map_err(|e| CoreError::StreamError(e.to_string()))?;
+        let response = self
+            .client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| CoreError::StreamError(e.to_string()))?
+            .error_for_status()
+            .map_err(|e| {
+                let message = format!(
+                    "Failed to connect to host! Status code: {}",
+                    e.status().unwrap_or(StatusCode::IM_A_TEAPOT)
+                );
+
+                CoreError::StreamError(message)
+            })?;
 
         let statuses =
             response.json::<Vec<models::StreamSummary>>().await.map_err(|e| CoreError::StreamError(e.to_string()))?; // Maybe should be a parse error?
