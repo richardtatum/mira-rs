@@ -72,6 +72,7 @@ impl Dispatcher {
             return Ok(());
         };
 
+        println!("Removing token {token} from worker.");
         sender.send(Command::RemoveCallback(token)).map_err(|e| CoreError::StreamError(e.to_string()))
     }
 
@@ -79,6 +80,7 @@ impl Dispatcher {
         let workers = Arc::clone(&self.workers);
         tokio::spawn(async move {
             let _ = handle.await; // This returns when the 'poll_endpoint' loop is broken
+            println!("All keys removed from url {}. Shutting down", &worker_key.0);
             workers.remove(&worker_key);
         });
     }
