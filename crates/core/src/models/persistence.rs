@@ -35,3 +35,9 @@ pub struct HostSubscription {
     pub host: Host,
     pub subscription: Subscription,
 }
+
+impl HostSubscription {
+    pub fn get_url(&self) -> String {
+        format!("{}/{}", self.host.url, self.subscription.key)
+    }
+}

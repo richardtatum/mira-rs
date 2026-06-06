@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use mira_core::{CoreError, Host, PersistenceProvider, StreamStatus, Subscription};
+use mira_core::{CoreError, Host, HostSubscription, PersistenceProvider, StreamStatus, Subscription};
 use mira_stream_watcher::StreamWatcher;
 use poise::serenity_prelude::{ChannelId, GuildId, Http, UserId};
 use url::Url;
@@ -75,12 +75,22 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         Ok(())
     }
 
-    pub async fn get_subscriptions(&self, guild_id: GuildId) -> Result<Vec<Subscription>, CoreError> {
+    pub async fn unsubscribe(&self, subscription: Subscription) -> Result<(), CoreError> {
+        if let Some(token) = subscription.token {
+            // If there is a token, deregister
+            self.watcher.stop_watching(token)?;
+        }
+
+        // remove from the DB regardless
+        self.persistence.delete_subscription(subscription.id).await
+    }
+
+    pub async fn get_subscriptions(&self, guild_id: GuildId) -> Result<Vec<HostSubscription>, CoreError> {
         self.persistence.get_subscriptions(guild_id.get() as i64).await
     }
 
     pub async fn restore_subscriptions(&self) -> Result<(), CoreError> {
-        let to_restore = self.persistence.get_subscriptions_to_restore().await?;
+        let to_restore = self.persistence.get_all_subscriptions().await?;
 
         println!("Restoring {} subscription(s)...", to_restore.len());
 

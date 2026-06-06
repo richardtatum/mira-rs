@@ -4,7 +4,7 @@ use mira_core::{
     models::persistence::{Host, HostSubscription, StreamState, Subscription},
 };
 use sqlx::{migrate::MigrateError, sqlite::SqlitePool};
-use uuid::{Uuid, uuid};
+use uuid::Uuid;
 
 pub struct SqliteClient {
     pool: SqlitePool,
@@ -178,30 +178,44 @@ impl PersistenceProvider for SqliteClient {
         Ok(())
     }
 
-    async fn get_subscriptions(&self, guild_id: i64) -> Result<Vec<Subscription>, CoreError> {
-        let subscriptions = sqlx::query!(
+    async fn get_subscriptions(&self, guild_id: i64) -> Result<Vec<HostSubscription>, CoreError> {
+        let results = sqlx::query!(
             r#"
-                SELECT s.id, key, channel_id, subscription_token
+                SELECT h.id AS host_id, h.url, hg.auth_header, hg.id AS host_guild_id,
+                       s.key, s.id AS subscription_id, s.channel_id, s.subscription_token
                 FROM subscription s
                 INNER JOIN host_guild hg ON hg.id = s.host_guild_id
+                INNER JOIN host h ON h.id = hg.host_id
                 WHERE hg.guild_id = ?
             "#,
             guild_id
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| CoreError::PersistenceError(e.to_string()))?
-        .into_iter()
-        .map(|row| {
-            let token = row.subscription_token.as_deref().and_then(|s| Uuid::parse_str(s).ok());
-            Subscription { id: row.id, key: row.key, channel_id: row.channel_id, token }
-        })
-        .collect();
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
+
+        let subscriptions = results
+            .into_iter()
+            .map(|row| {
+                let host = Host {
+                    id: row.host_id,
+                    url: row.url,
+                    auth_header: row.auth_header,
+                    host_guild_id: row.host_guild_id,
+                };
+
+                let token = row.subscription_token.as_deref().and_then(|s| Uuid::parse_str(s).ok());
+                let subscription =
+                    Subscription { id: row.subscription_id, key: row.key, channel_id: row.channel_id, token };
+
+                HostSubscription { host, subscription }
+            })
+            .collect();
 
         Ok(subscriptions)
     }
 
-    async fn get_subscriptions_to_restore(&self) -> Result<Vec<HostSubscription>, CoreError> {
+    async fn get_all_subscriptions(&self) -> Result<Vec<HostSubscription>, CoreError> {
         let results = sqlx::query!(
             r#"
                 SELECT h.id AS host_id, h.url, hg.auth_header, hg.id AS host_guild_id,
@@ -234,6 +248,21 @@ impl PersistenceProvider for SqliteClient {
             .collect();
 
         Ok(subscriptions)
+    }
+
+    async fn delete_subscription(&self, subscription_id: i64) -> Result<(), CoreError> {
+        sqlx::query!(
+            r#"
+                DELETE FROM subscription
+                WHERE id = ?
+            "#,
+            subscription_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
+
+        Ok(())
     }
 
     async fn update_subscription_token(&self, subscription_id: i64, token: Uuid) -> Result<(), CoreError> {
@@ -338,7 +367,7 @@ mod tests {
         let token = Uuid::new_v4();
         client.update_subscription_token(sub_id, token).await.unwrap();
 
-        let subscriptions = client.get_subscriptions_to_restore().await.unwrap();
+        let subscriptions = client.get_all_subscriptions().await.unwrap();
         assert_eq!(subscriptions.len(), 1);
         assert_eq!(subscriptions[0].subscription.token, Some(token));
     }

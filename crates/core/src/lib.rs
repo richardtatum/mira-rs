@@ -4,7 +4,7 @@ pub mod ports;
 
 // re-export
 pub use models::error::CoreError;
-pub use models::persistence::{Host, StreamState, Subscription};
+pub use models::persistence::{Host, HostSubscription, StreamState, Subscription};
 pub use models::status::{StreamInfo, StreamStatus};
 pub use ports::inbound::AsyncCallback;
 pub use ports::inbound::SubscriptionToken;
