@@ -31,7 +31,7 @@ pub async fn subscribe<P: PersistenceProvider>(
 
     println!("GuildId: {}", guild_id);
 
-    let hosts: HashMap<i64, Host> = ctx
+    let host_by_id: HashMap<i64, Host> = ctx
         .data()
         .subscription_handler
         .get_hosts(guild_id.get() as i64)
@@ -40,16 +40,16 @@ pub async fn subscribe<P: PersistenceProvider>(
         .map(|h| (h.id, h))
         .collect();
 
-    if hosts.is_empty() {
+    if host_by_id.is_empty() {
         let embed = error_embed("Subscribe Failed", "No available hosts found. Please add a host first with /host");
 
         ctx.send(CreateReply::default().embed(embed)).await?;
         return Ok(());
     }
 
-    println!("Available hosts: {:?}", hosts);
+    println!("Available hosts: {:?}", host_by_id);
 
-    let options = hosts.values().map(|host| CreateSelectMenuOption::new(&host.url, host.id.to_string())).collect();
+    let options = host_by_id.values().map(|host| CreateSelectMenuOption::new(&host.url, host.id.to_string())).collect();
 
     let reply = {
         let menu =
@@ -74,7 +74,7 @@ pub async fn subscribe<P: PersistenceProvider>(
 
         if let Some(value) = selected {
             let host_id: i64 = value.parse().expect("Selected host_id must be an i64");
-            let host = hosts[&host_id].clone();
+            let host = host_by_id[&host_id].clone();
             let host_url = host.url.clone();
 
             ctx.data().subscription_handler.subscribe(host, key.clone(), user_id, channel_id).await?;
