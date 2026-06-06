@@ -70,7 +70,11 @@ pub async fn unsubscribe<P: PersistenceProvider>(ctx: Context<'_, P>) -> Result<
 
             ctx.data().subscription_handler.unsubscribe(host_subscription.subscription.clone()).await?;
 
-            let embed = success_embed("Success", format!("Unsubscribed from {}", url));
+            let embed = success_embed(
+                "Success",
+                format!("Unsubscribed from {}. You will no longer be notified when the come online.", url),
+            );
+
             let message = CreateInteractionResponse::UpdateMessage(
                 CreateInteractionResponseMessage::new().embed(embed).content("").components(vec![]),
             );
