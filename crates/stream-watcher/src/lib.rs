@@ -30,14 +30,14 @@ impl StreamWatcher {
         self.dispatcher.register(url, auth_header, key, provider, callback)
     }
 
+    pub fn unwatch(&self, url: String, auth_header: Option<String>, token: SubscriptionToken) -> Result<(), CoreError> {
+        self.dispatcher.deregister(url, auth_header, token)
+    }
+
     pub async fn test_host(&self, url: String, auth_header: Option<String>) -> Result<(), CoreError> {
         let provider = BroadcastBoxClient::new(url.clone(), auth_header)?;
         println!("Getting statuses for url: {}", url.clone());
         provider.get_statuses(vec![]).await?;
         Ok(())
-    }
-
-    pub fn unwatch(&self, url: String, auth_header: Option<String>, token: SubscriptionToken) -> Result<(), CoreError> {
-        self.dispatcher.deregister(url, auth_header, token)
     }
 }
