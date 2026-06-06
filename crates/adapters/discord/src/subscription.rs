@@ -83,7 +83,7 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         for subscription in subscriptions {
             let host = subscription.host;
             let key = subscription.key;
-            let subscription_id = subscription.subscription_id;
+            let subscription_id = subscription.id;
             let channel_id = ChannelId::new(subscription.channel_id as u64);
             let host_url = host.url.clone();
 

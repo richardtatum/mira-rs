@@ -1,10 +1,10 @@
 use async_trait::async_trait;
 use mira_core::{
     CoreError, PersistenceProvider,
-    models::persistence::{Host, StreamState, SubscriptionRestore},
+    models::persistence::{Host, StreamState, Subscription},
 };
 use sqlx::{migrate::MigrateError, sqlite::SqlitePool};
-use uuid::Uuid;
+use uuid::{Uuid, uuid};
 
 pub struct SqliteClient {
     pool: SqlitePool,
@@ -178,7 +178,7 @@ impl PersistenceProvider for SqliteClient {
         Ok(())
     }
 
-    async fn get_all_subscriptions(&self) -> Result<Vec<SubscriptionRestore>, CoreError> {
+    async fn get_all_subscriptions(&self) -> Result<Vec<Subscription>, CoreError> {
         let results = sqlx::query!(
             r#"
                 SELECT h.id AS host_id, h.url, hg.auth_header, hg.id AS host_guild_id,
@@ -202,10 +202,10 @@ impl PersistenceProvider for SqliteClient {
                     host_guild_id: row.host_guild_id,
                 };
                 let subscription_token = row.subscription_token.as_deref().and_then(|s| Uuid::parse_str(s).ok());
-                SubscriptionRestore {
+                Subscription {
                     host,
                     key: row.key,
-                    subscription_id: row.subscription_id,
+                    id: row.subscription_id,
                     channel_id: row.channel_id,
                     subscription_token,
                 }
