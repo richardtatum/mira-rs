@@ -178,6 +178,29 @@ impl PersistenceProvider for SqliteClient {
         Ok(())
     }
 
+    async fn get_subscriptions(&self, guild_id: i64) -> Result<Vec<Subscription>, CoreError> {
+        let subscriptions = sqlx::query!(
+            r#"
+                SELECT s.id, key, channel_id, subscription_token
+                FROM subscription s
+                INNER JOIN host_guild hg ON hg.id = s.host_guild_id
+                WHERE hg.guild_id = ?
+            "#,
+            guild_id
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?
+        .into_iter()
+        .map(|row| {
+            let token = row.subscription_token.as_deref().and_then(|s| Uuid::parse_str(s).ok());
+            Subscription { id: row.id, key: row.key, channel_id: row.channel_id, token }
+        })
+        .collect();
+
+        Ok(subscriptions)
+    }
+
     async fn get_subscriptions_to_restore(&self) -> Result<Vec<HostSubscription>, CoreError> {
         let results = sqlx::query!(
             r#"

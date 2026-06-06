@@ -45,6 +45,8 @@ pub trait PersistenceProvider: Send + Sync {
 
     async fn mark_subscription_offline(&self, subscription_id: i64) -> Result<(), CoreError>;
 
+    async fn get_subscriptions(&self, guild_id: i64) -> Result<Vec<Subscription>, CoreError>;
+
     async fn get_subscriptions_to_restore(&self) -> Result<Vec<HostSubscription>, CoreError>;
 
     async fn update_subscription_token(&self, subscription_id: i64, token: Uuid) -> Result<(), CoreError>;

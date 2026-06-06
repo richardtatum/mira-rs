@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use mira_core::{CoreError, Host, PersistenceProvider, StreamStatus};
+use mira_core::{CoreError, Host, PersistenceProvider, StreamStatus, Subscription};
 use mira_stream_watcher::StreamWatcher;
 use poise::serenity_prelude::{ChannelId, GuildId, Http, UserId};
 use url::Url;
@@ -75,13 +75,18 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         Ok(())
     }
 
+    pub async fn get_subscriptions(&self, guild_id: GuildId) -> Result<Vec<Subscription>, CoreError> {
+        self.persistence.get_subscriptions(guild_id.get() as i64).await
+    }
+
     pub async fn restore_subscriptions(&self) -> Result<(), CoreError> {
-        let subscriptions = self.persistence.get_subscriptions_to_restore().await?;
+        let to_restore = self.persistence.get_subscriptions_to_restore().await?;
 
-        println!("Restoring {} subscription(s)...", subscriptions.len());
+        println!("Restoring {} subscription(s)...", to_restore.len());
 
-        for subscription in subscriptions {
-            let host = subscription.host;
+        for entry in to_restore {
+            let host = entry.host;
+            let subscription = entry.subscription;
             let key = subscription.key;
             let subscription_id = subscription.id;
             let channel_id = ChannelId::new(subscription.channel_id as u64);
