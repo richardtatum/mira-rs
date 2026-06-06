@@ -202,7 +202,7 @@ impl PersistenceProvider for SqliteClient {
                     host_guild_id: row.host_guild_id,
                 };
 
-                let subscription_token = row.subscription_token.as_deref().and_then(|s| Uuid::parse_str(s).ok());
+                let token = row.subscription_token.as_deref().and_then(|s| Uuid::parse_str(s).ok());
                 let subscription =
                     Subscription { id: row.subscription_id, key: row.key, channel_id: row.channel_id, token };
 
