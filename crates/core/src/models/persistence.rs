@@ -25,8 +25,13 @@ impl StreamState {
 #[derive(Debug, Clone)]
 pub struct Subscription {
     pub id: i64,
-    pub host: Host,
     pub key: String,
     pub channel_id: i64,
-    pub subscription_token: Option<Uuid>,
+    pub token: Option<Uuid>,
+}
+
+#[derive(Debug, Clone)]
+pub struct HostSubscription {
+    pub host: Host,
+    pub subscription: Subscription,
 }

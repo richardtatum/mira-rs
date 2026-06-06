@@ -76,7 +76,7 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
     }
 
     pub async fn restore_subscriptions(&self) -> Result<(), CoreError> {
-        let subscriptions = self.persistence.get_all_subscriptions().await?;
+        let subscriptions = self.persistence.get_subscriptions_to_restore().await?;
 
         println!("Restoring {} subscription(s)...", subscriptions.len());
 

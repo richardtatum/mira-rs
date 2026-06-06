@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use mira_core::{
     CoreError, PersistenceProvider,
-    models::persistence::{Host, StreamState, Subscription},
+    models::persistence::{Host, HostSubscription, StreamState, Subscription},
 };
 use sqlx::{migrate::MigrateError, sqlite::SqlitePool};
 use uuid::{Uuid, uuid};
@@ -178,7 +178,7 @@ impl PersistenceProvider for SqliteClient {
         Ok(())
     }
 
-    async fn get_all_subscriptions(&self) -> Result<Vec<Subscription>, CoreError> {
+    async fn get_subscriptions_to_restore(&self) -> Result<Vec<HostSubscription>, CoreError> {
         let results = sqlx::query!(
             r#"
                 SELECT h.id AS host_id, h.url, hg.auth_header, hg.id AS host_guild_id,
@@ -201,14 +201,12 @@ impl PersistenceProvider for SqliteClient {
                     auth_header: row.auth_header,
                     host_guild_id: row.host_guild_id,
                 };
+
                 let subscription_token = row.subscription_token.as_deref().and_then(|s| Uuid::parse_str(s).ok());
-                Subscription {
-                    host,
-                    key: row.key,
-                    id: row.subscription_id,
-                    channel_id: row.channel_id,
-                    subscription_token,
-                }
+                let subscription =
+                    Subscription { id: row.subscription_id, key: row.key, channel_id: row.channel_id, token };
+
+                HostSubscription { host, subscription }
             })
             .collect();
 
@@ -287,7 +285,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_all_subscriptions_includes_subscription_token() {
+    async fn test_get_subscriptions_to_restore_includes_subscription_token() {
         let client = setup().await;
 
         let host_id =
@@ -317,8 +315,8 @@ mod tests {
         let token = Uuid::new_v4();
         client.update_subscription_token(sub_id, token).await.unwrap();
 
-        let subscriptions = client.get_all_subscriptions().await.unwrap();
+        let subscriptions = client.get_subscriptions_to_restore().await.unwrap();
         assert_eq!(subscriptions.len(), 1);
-        assert_eq!(subscriptions[0].subscription_token, Some(token));
+        assert_eq!(subscriptions[0].subscription.token, Some(token));
     }
 }
