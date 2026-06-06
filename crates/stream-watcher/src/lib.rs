@@ -30,8 +30,8 @@ impl StreamWatcher {
         self.dispatcher.register(url, auth_header, key, provider, callback)
     }
 
-    pub fn unwatch(&self, url: String, auth_header: Option<String>, token: SubscriptionToken) -> Result<(), CoreError> {
-        self.dispatcher.deregister(url, auth_header, token)
+    pub fn stop_watching(&self, token: SubscriptionToken) -> Result<(), CoreError> {
+        self.dispatcher.deregister(token)
     }
 
     pub async fn test_host(&self, url: String, auth_header: Option<String>) -> Result<(), CoreError> {

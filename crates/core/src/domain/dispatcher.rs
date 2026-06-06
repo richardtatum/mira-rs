@@ -11,14 +11,21 @@ use crate::models::command::Command;
 use crate::ports::inbound::{AsyncCallback, SubscriptionToken};
 use crate::{CoreError, StreamStatusProvider};
 
+type WorkerKey = (String, Option<String>);
+
 pub struct Dispatcher {
-    workers: Arc<DashMap<(String, Option<String>), mpsc::UnboundedSender<Command>>>,
+    workers: Arc<DashMap<WorkerKey, mpsc::UnboundedSender<Command>>>,
+    token_to_worker: Arc<DashMap<SubscriptionToken, WorkerKey>>, // reverse lookup to make unsubscribing easier
     interval: Duration,
 }
 
 impl Dispatcher {
     pub fn new(polling_interval: Option<Duration>) -> Self {
-        Self { workers: Arc::new(DashMap::new()), interval: polling_interval.unwrap_or(Duration::from_secs(30)) }
+        Self {
+            workers: Arc::new(DashMap::new()),
+            token_to_worker: Arc::new(DashMap::new()),
+            interval: polling_interval.unwrap_or(Duration::from_secs(30)),
+        }
     }
 
     pub fn register<P: StreamStatusProvider + 'static>(
@@ -34,6 +41,7 @@ impl Dispatcher {
 
         // See if there is already a worker for this (url, auth_header) pair, otherwise create a new one
         let sender = self.workers.entry(worker_key.clone()).or_insert_with(|| {
+            let worker_key = worker_key.clone();
             let (tx, rx) = mpsc::unbounded_channel();
             let handle = tokio::spawn(poll_endpoint(rx, interval, provider, None));
 
@@ -46,28 +54,28 @@ impl Dispatcher {
         // Generate a unique token and register the callback with the worker via the channel
         let token = Uuid::new_v4();
         sender.send(Command::AddKey(key, token, callback)).map_err(|e| CoreError::StreamError(e.to_string()))?;
+        self.token_to_worker.insert(token, worker_key);
 
         Ok(token)
     }
 
-    pub fn deregister(
-        &self,
-        url: String,
-        auth_header: Option<String>,
-        token: SubscriptionToken,
-    ) -> Result<(), CoreError> {
-        let worker_key = (url.clone(), auth_header);
-        if let Some(sender) = self.workers.get(&worker_key) {
-            sender.send(Command::RemoveCallback(token)).map_err(|e| CoreError::StreamError(e.to_string()))?;
+    pub fn deregister(&self, token: SubscriptionToken) -> Result<(), CoreError> {
+        let Some((_, worker_key)) = self.token_to_worker.remove(&token) else {
+            // No reverse mapping found, token may already have been removed or was never registered
+            println!("No worker mapped to token {token}, ignoring deregister request");
             return Ok(());
-        }
+        };
 
-        // Worker no longer exists, just quietly exit
-        println!("No worker is registered for url '{}', so can't deregister token. Ignoring request", url);
-        Ok(())
+        let Some(sender) = self.workers.get(&worker_key) else {
+            // Worker no longer exists, just quietly exit
+            println!("Worker for token {token} no longer exists, ignoring deregister request");
+            return Ok(());
+        };
+
+        sender.send(Command::RemoveCallback(token)).map_err(|e| CoreError::StreamError(e.to_string()))
     }
 
-    fn spawn_cleanup_task(&self, handle: JoinHandle<()>, worker_key: (String, Option<String>)) {
+    fn spawn_cleanup_task(&self, handle: JoinHandle<()>, worker_key: WorkerKey) {
         let workers = Arc::clone(&self.workers);
         tokio::spawn(async move {
             let _ = handle.await; // This returns when the 'poll_endpoint' loop is broken
