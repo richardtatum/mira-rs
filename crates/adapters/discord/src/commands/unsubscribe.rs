@@ -19,7 +19,7 @@ use crate::{
 pub async fn unsubscribe<P: PersistenceProvider>(ctx: Context<'_, P>) -> Result<(), Error> {
     let Some(guild_id) = ctx.guild_id() else {
         let embed = error_embed("Subscribe Failed", "/unsubscribe can only be ran from a server channel currently.");
-        ctx.send(CreateReply::default().embed(embed)).await?;
+        ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
         return Ok(());
     };
 
@@ -36,7 +36,7 @@ pub async fn unsubscribe<P: PersistenceProvider>(ctx: Context<'_, P>) -> Result<
 
     if host_subscription_by_id.is_empty() {
         let embed = error_embed("No Subscriptions", "There are no subscriptions to unsubscribe from.");
-        ctx.send(CreateReply::default().embed(embed)).await?;
+        ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
         return Ok(());
     }
 
@@ -48,7 +48,7 @@ pub async fn unsubscribe<P: PersistenceProvider>(ctx: Context<'_, P>) -> Result<
         let menu = CreateSelectMenu::new("subscription-select", CreateSelectMenuKind::String { options })
             .placeholder("Choose a subscription");
         let components = vec![CreateActionRow::SelectMenu(menu)];
-        poise::CreateReply::default().content("Pick an option").components(components)
+        poise::CreateReply::default().ephemeral(true).content("Pick an option").components(components)
     };
 
     ctx.send(reply).await?;

@@ -18,13 +18,13 @@ pub async fn add_host<P: PersistenceProvider>(
             "Invalid URL",
             "The provided URL could not be parsed. Please include a scheme (e.g. https://).",
         );
-        ctx.send(CreateReply::default().embed(embed)).await?;
+        ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
         return Ok(());
     };
 
     let Some(guild_id) = ctx.guild_id() else {
         let embed = error_embed("Subscribe Failed", "/add_host can only be ran from a server channel currently.");
-        ctx.send(CreateReply::default().embed(embed)).await?;
+        ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
         return Ok(());
     };
 

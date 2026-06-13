@@ -22,7 +22,7 @@ pub async fn subscribe<P: PersistenceProvider>(
 ) -> Result<(), Error> {
     let Some(guild_id) = ctx.guild_id() else {
         let embed = error_embed("Subscribe Failed", "/subscribe can only be ran from a server channel currently.");
-        ctx.send(CreateReply::default().embed(embed)).await?;
+        ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
         return Ok(());
     };
 
@@ -43,7 +43,7 @@ pub async fn subscribe<P: PersistenceProvider>(
     if host_by_id.is_empty() {
         let embed = error_embed("Subscribe Failed", "No available hosts found. Please add a host first with /host");
 
-        ctx.send(CreateReply::default().embed(embed)).await?;
+        ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
         return Ok(());
     }
 
@@ -57,7 +57,7 @@ pub async fn subscribe<P: PersistenceProvider>(
 
         let components = vec![CreateActionRow::SelectMenu(menu)];
 
-        poise::CreateReply::default().content("Pick an option").components(components)
+        poise::CreateReply::default().ephemeral(true).content("Pick an option").components(components)
     };
 
     ctx.send(reply).await?;

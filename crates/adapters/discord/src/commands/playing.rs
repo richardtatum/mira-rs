@@ -40,7 +40,7 @@ pub async fn playing<P: PersistenceProvider>(
 
     if host_subscription_by_id.is_empty() {
         let embed = error_embed("No Streams", "There are no streams currently online.");
-        ctx.send(CreateReply::default().embed(embed)).await?;
+        ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
         return Ok(());
     }
 
@@ -53,7 +53,7 @@ pub async fn playing<P: PersistenceProvider>(
         let menu = CreateSelectMenu::new("subscription-select", CreateSelectMenuKind::String { options })
             .placeholder("Choose a stream");
         let components = vec![CreateActionRow::SelectMenu(menu)];
-        poise::CreateReply::default().content("Pick an option").components(components)
+        poise::CreateReply::default().ephemeral(true).content("Pick an option").components(components)
     };
 
     ctx.send(reply).await?;
@@ -78,7 +78,7 @@ pub async fn playing<P: PersistenceProvider>(
             let embed = success_embed("Success", format!("Updated {} to playing '{}'", url, playing.clone()));
 
             let message = CreateInteractionResponse::UpdateMessage(
-                CreateInteractionResponseMessage::new().embed(embed).content("").components(vec![]),
+                CreateInteractionResponseMessage::new().ephemeral(true).embed(embed).content("").components(vec![]),
             );
 
             interaction.create_response(&ctx.serenity_context(), message).await?;
