@@ -182,7 +182,7 @@ impl PersistenceProvider for SqliteClient {
         let results = sqlx::query!(
             r#"
                 SELECT h.id AS host_id, h.url, hg.auth_header, hg.id AS host_guild_id,
-                       s.key, s.id AS subscription_id, s.channel_id, s.subscription_token
+                       s.key, s.id AS subscription_id, s.channel_id, s.subscription_token, s.message_id
                 FROM subscription s
                 INNER JOIN host_guild hg ON hg.id = s.host_guild_id
                 INNER JOIN host h ON h.id = hg.host_id
@@ -205,8 +205,13 @@ impl PersistenceProvider for SqliteClient {
                 };
 
                 let token = row.subscription_token.as_deref().and_then(|s| Uuid::parse_str(s).ok());
-                let subscription =
-                    Subscription { id: row.subscription_id, key: row.key, channel_id: row.channel_id, token };
+                let subscription = Subscription {
+                    id: row.subscription_id,
+                    key: row.key,
+                    channel_id: row.channel_id,
+                    token,
+                    message_id: row.message_id,
+                };
 
                 HostSubscription { host, subscription }
             })
@@ -219,7 +224,7 @@ impl PersistenceProvider for SqliteClient {
         let results = sqlx::query!(
             r#"
                 SELECT h.id AS host_id, h.url, hg.auth_header, hg.id AS host_guild_id,
-                       s.key, s.id AS subscription_id, s.channel_id, s.subscription_token
+                       s.key, s.id AS subscription_id, s.channel_id, s.subscription_token, s.message_id
                 FROM host h
                 INNER JOIN host_guild hg ON hg.host_id = h.id
                 INNER JOIN subscription s ON s.host_guild_id = hg.id
@@ -240,8 +245,13 @@ impl PersistenceProvider for SqliteClient {
                 };
 
                 let token = row.subscription_token.as_deref().and_then(|s| Uuid::parse_str(s).ok());
-                let subscription =
-                    Subscription { id: row.subscription_id, key: row.key, channel_id: row.channel_id, token };
+                let subscription = Subscription {
+                    id: row.subscription_id,
+                    key: row.key,
+                    channel_id: row.channel_id,
+                    token,
+                    message_id: row.message_id,
+                };
 
                 HostSubscription { host, subscription }
             })
@@ -274,6 +284,23 @@ impl PersistenceProvider for SqliteClient {
                 WHERE id = ?
             "#,
             token_str,
+            subscription_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn set_playing(&self, subscription_id: i64, playing: String) -> Result<(), CoreError> {
+        sqlx::query!(
+            r#"
+                UPDATE subscription
+                SET playing = ?
+                WHERE id = ?
+            "#,
+            playing,
             subscription_id
         )
         .execute(&self.pool)

@@ -28,6 +28,13 @@ pub struct Subscription {
     pub key: String,
     pub channel_id: i64,
     pub token: Option<Uuid>,
+    pub message_id: Option<i64>,
+}
+
+impl Subscription {
+    pub fn is_online(&self) -> bool {
+        self.message_id.is_some()
+    }
 }
 
 #[derive(Debug, Clone)]

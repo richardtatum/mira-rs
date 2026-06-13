@@ -114,6 +114,10 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         Ok(())
     }
 
+    pub async fn set_playing(&self, subscription_id: i64, playing: String) -> Result<(), CoreError> {
+        self.persistence.set_playing(subscription_id, playing).await
+    }
+
     fn build_callback(
         &self,
         subscription_id: i64,
