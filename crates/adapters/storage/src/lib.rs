@@ -3,7 +3,8 @@ use mira_core::{
     CoreError, PersistenceProvider,
     models::persistence::{Host, HostSubscription, StreamState, Subscription},
 };
-use sqlx::{migrate::MigrateError, sqlite::SqlitePool};
+use sqlx::{migrate::MigrateError, sqlite::{SqliteConnectOptions, SqlitePool}};
+use std::str::FromStr;
 use uuid::Uuid;
 
 pub struct SqliteClient {
@@ -12,7 +13,8 @@ pub struct SqliteClient {
 
 impl SqliteClient {
     pub async fn new(database_url: String) -> Result<Self, sqlx::Error> {
-        let pool = SqlitePool::connect(&database_url).await?;
+        let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(true);
+        let pool = SqlitePool::connect_with(options).await?;
         Ok(Self { pool })
     }
 
