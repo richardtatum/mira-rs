@@ -41,7 +41,9 @@ async fn main() {
                 println!("Logged in as {}", ready.user.name);
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 let database_url = env::var("DATABASE_URL").expect("Missing database url!");
-                let persistence = Arc::new(SqliteClient::new(database_url).await?);
+                let persistence = SqliteClient::new(database_url).await?;
+                persistence.migrate().await?;
+                let persistence = Arc::new(persistence);
                 let subscription_handler = SubscriptionHandler::new(ctx.http.clone(), persistence);
 
                 // Restore any existing subscriptions from the db
