@@ -61,11 +61,12 @@ pub async fn subscribe<P: PersistenceProvider>(
         poise::CreateReply::default().ephemeral(true).content("Pick an option").components(components)
     };
 
-    ctx.send(reply).await?;
+    let sent = ctx.send(reply).await?;
+    let message_id = sent.message().await?.id;
 
     while let Some(interaction) = ComponentInteractionCollector::new(ctx.serenity_context())
         .timeout(time::Duration::from_secs(120))
-        .filter(move |i| i.user.id == user_id)
+        .filter(move |i| i.user.id == user_id && i.message.id == message_id)
         .await
     {
         let selected = match &interaction.data.kind {
