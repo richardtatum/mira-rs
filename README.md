@@ -93,7 +93,7 @@ Press `Ctrl+C` to stop watching.
 - [x] `/subscribe` — subscribe to a stream key on a registered host
 - [x] `/unsubscribe` — unsubscribe from a stream key
 - [x] `/playing` — set what is currently playing on a host
-- [ ] `/list` — list all subscriptions across all registered guild hosts
+- [x] `/list_subscriptions` — list all subscriptions across all registered guild hosts
 
 ### Functionality
 
