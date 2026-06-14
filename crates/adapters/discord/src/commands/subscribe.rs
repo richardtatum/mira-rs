@@ -83,9 +83,7 @@ pub async fn subscribe<P: PersistenceProvider>(
 
             // Clear the ephemeral select menu
             let ack = CreateInteractionResponse::UpdateMessage(
-                CreateInteractionResponseMessage::new()
-                    .content(format!("Selected {}", host_url.clone()))
-                    .components(vec![]),
+                CreateInteractionResponseMessage::new().content("Success").components(vec![]),
             );
             interaction.create_response(&ctx.serenity_context(), ack).await?;
 
