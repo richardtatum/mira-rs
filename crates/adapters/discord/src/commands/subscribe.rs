@@ -11,7 +11,7 @@ use poise::{
     CreateReply,
     serenity_prelude::{
         ComponentInteractionCollector, ComponentInteractionDataKind, CreateActionRow, CreateInteractionResponse,
-        CreateInteractionResponseMessage, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption,
+        CreateInteractionResponseMessage, CreateMessage, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption,
     },
 };
 
@@ -79,6 +79,13 @@ pub async fn subscribe<P: PersistenceProvider>(
 
             ctx.data().subscription_handler.subscribe(host, key.clone(), user_id, channel_id).await?;
 
+            // Clear the ephemeral select menu
+            let ack = CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::new().content("").components(vec![]),
+            );
+            interaction.create_response(&ctx.serenity_context(), ack).await?;
+
+            // Send a public success message to the channel
             let embed = success_embed(
                 "Success",
                 format!(
@@ -86,12 +93,7 @@ pub async fn subscribe<P: PersistenceProvider>(
                     host_url, key
                 ),
             );
-
-            let message = CreateInteractionResponse::UpdateMessage(
-                CreateInteractionResponseMessage::new().embed(embed).content("").components(vec![]),
-            );
-
-            interaction.create_response(&ctx.serenity_context(), message).await?;
+            channel_id.send_message(&ctx.serenity_context(), CreateMessage::new().embed(embed)).await?;
         };
     }
 
