@@ -26,8 +26,6 @@ pub async fn playing<P: PersistenceProvider>(
         return Ok(());
     };
 
-    let user_id = ctx.author().id;
-
     let host_subscription_by_id: HashMap<i64, HostSubscription> = ctx
         .data()
         .subscription_handler
@@ -61,7 +59,7 @@ pub async fn playing<P: PersistenceProvider>(
 
     while let Some(interaction) = ComponentInteractionCollector::new(ctx.serenity_context())
         .timeout(time::Duration::from_secs(120))
-        .filter(move |i| i.user.id == user_id && i.message.id == message_id)
+        .filter(move |i| i.message.id == message_id)
         .await
     {
         let selected = match &interaction.data.kind {

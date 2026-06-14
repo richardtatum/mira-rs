@@ -66,7 +66,7 @@ pub async fn subscribe<P: PersistenceProvider>(
 
     while let Some(interaction) = ComponentInteractionCollector::new(ctx.serenity_context())
         .timeout(time::Duration::from_secs(120))
-        .filter(move |i| i.user.id == user_id && i.message.id == message_id)
+        .filter(move |i| i.message.id == message_id)
         .await
     {
         let selected = match &interaction.data.kind {
