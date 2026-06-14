@@ -101,3 +101,4 @@ Press `Ctrl+C` to stop watching.
 - [ ] Tests — unit and integration test coverage across crates
 - [ ] Stream screenshots — capture a thumbnail from the stream and display it in the online/offline embed
 - [ ] IGDB integration — enrich "currently playing" metadata (cover art, genre, release date) via the [IGDB API](https://api-docs.igdb.com/)
+- [ ] Guild cleanup — remove all hosts, subscriptions, and related data when the bot is removed from a guild
