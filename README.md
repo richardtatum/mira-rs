@@ -91,8 +91,8 @@ Press `Ctrl+C` to stop watching.
 - [x] `/add_host` — register a Broadcast Box host with the guild
 - [ ] `/remove_host` — remove a registered host from the guild
 - [x] `/subscribe` — subscribe to a stream key on a registered host
-- [ ] `/unsubscribe` — unsubscribe from a stream key
-- [ ] `/playing` — set what is currently playing on a host
+- [x] `/unsubscribe` — unsubscribe from a stream key
+- [x] `/playing` — set what is currently playing on a host
 - [ ] `/list` — list all subscriptions across all registered guild hosts
 
 ### Functionality
