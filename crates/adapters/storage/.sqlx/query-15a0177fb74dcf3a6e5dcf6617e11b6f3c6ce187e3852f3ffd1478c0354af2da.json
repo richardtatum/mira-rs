@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO host_guild (host_id, guild_id, created_by) VALUES (?, 999, 1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "15a0177fb74dcf3a6e5dcf6617e11b6f3c6ce187e3852f3ffd1478c0354af2da"
+}

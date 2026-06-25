@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT h.id AS host_id, h.url, hg.auth_header, hg.id AS host_guild_id,\n                       s.key, s.id AS subscription_id, s.channel_id, s.subscription_token, s.message_id\n                FROM subscription s\n                INNER JOIN host_guild hg ON hg.id = s.host_guild_id\n                INNER JOIN host h ON h.id = hg.host_id\n                WHERE hg.guild_id = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "host_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "url",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "auth_header",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "host_guild_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "key",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "subscription_id",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "channel_id",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "subscription_token",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "message_id",
+        "ordinal": 8,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "22041d8c834a93e8570b394318faf0804bfb13fd5c11ef0454f6f5d93cc52a56"
+}

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT subscription_token FROM subscription WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "subscription_token",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "abc6335aaf926b10801606aac2a8db52e66305e8acd87fe661ce5cd516b653ea"
+}

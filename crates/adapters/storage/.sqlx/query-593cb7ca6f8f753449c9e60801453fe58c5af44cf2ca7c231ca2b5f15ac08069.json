@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO host_guild (host_id, guild_id, created_by) VALUES (?, ?, 1) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "593cb7ca6f8f753449c9e60801453fe58c5af44cf2ca7c231ca2b5f15ac08069"
+}

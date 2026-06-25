@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                DELETE FROM host\n                WHERE id = ?\n                AND NOT EXISTS (SELECT 1 FROM host_guild WHERE host_id = ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "e2a9ada15794df38826d6b60b4ea2bcc690fd2be7b7b66ffb3a5972bd1846f3b"
+}
