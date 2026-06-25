@@ -3,6 +3,7 @@ use mira_core::PersistenceProvider;
 pub(crate) mod add_host;
 pub(crate) mod list_subscriptions;
 pub(crate) mod playing;
+pub(crate) mod remove_host;
 pub(crate) mod subscribe;
 pub(crate) mod unsubscribe;
 
@@ -14,5 +15,6 @@ pub fn all<P: PersistenceProvider>() -> Vec<poise::Command<crate::types::Data<P>
         unsubscribe::unsubscribe(),
         playing::playing(),
         list_subscriptions::list_subscriptions(),
+        remove_host::remove_host(),
     ]
 }

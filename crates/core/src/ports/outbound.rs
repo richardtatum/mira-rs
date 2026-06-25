@@ -51,6 +51,8 @@ pub trait PersistenceProvider: Send + Sync {
 
     async fn delete_subscription(&self, subscription_id: i64) -> Result<(), CoreError>;
 
+    async fn delete_host_if_orphaned(&self, host_id: i64) -> Result<(), CoreError>;
+
     async fn update_subscription_token(&self, subscription_id: i64, token: Uuid) -> Result<(), CoreError>;
 
     async fn set_playing(&self, subscription_id: i64, playing: String) -> Result<(), CoreError>;

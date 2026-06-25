@@ -277,6 +277,23 @@ impl PersistenceProvider for SqliteClient {
         Ok(())
     }
 
+    async fn delete_host_if_orphaned(&self, host_id: i64) -> Result<(), CoreError> {
+        sqlx::query!(
+            r#"
+                DELETE FROM host
+                WHERE id = ?
+                AND NOT EXISTS (SELECT 1 FROM host_guild WHERE host_id = ?)
+            "#,
+            host_id,
+            host_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
+
+        Ok(())
+    }
+
     async fn update_subscription_token(&self, subscription_id: i64, token: Uuid) -> Result<(), CoreError> {
         let token_str = token.to_string();
         sqlx::query!(
@@ -363,6 +380,49 @@ mod tests {
                 .unwrap();
 
         assert_eq!(stored, Some(token.to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_delete_host_if_orphaned_removes_when_no_guild_links() {
+        let client = setup().await;
+
+        let host_id =
+            sqlx::query_scalar!("INSERT INTO host (url, created_by) VALUES ('http://orphan.test', 1) RETURNING id")
+                .fetch_one(&client.pool)
+                .await
+                .unwrap();
+
+        client.delete_host_if_orphaned(host_id).await.unwrap();
+
+        let count: i64 = sqlx::query_scalar!("SELECT COUNT(*) FROM host WHERE id = ?", host_id)
+            .fetch_one(&client.pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_delete_host_if_orphaned_keeps_when_guild_link_exists() {
+        let client = setup().await;
+
+        let host_id =
+            sqlx::query_scalar!("INSERT INTO host (url, created_by) VALUES ('http://linked.test', 1) RETURNING id")
+                .fetch_one(&client.pool)
+                .await
+                .unwrap();
+
+        sqlx::query!("INSERT INTO host_guild (host_id, guild_id, created_by) VALUES (?, 999, 1)", host_id)
+            .execute(&client.pool)
+            .await
+            .unwrap();
+
+        client.delete_host_if_orphaned(host_id).await.unwrap();
+
+        let count: i64 = sqlx::query_scalar!("SELECT COUNT(*) FROM host WHERE id = ?", host_id)
+            .fetch_one(&client.pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 1);
     }
 
     #[tokio::test]

@@ -85,6 +85,25 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         self.persistence.delete_subscription(subscription.id).await
     }
 
+    pub async fn remove_host(&self, host: Host, guild_id: GuildId) -> Result<(), CoreError> {
+        let subscriptions = self.persistence.get_subscriptions(guild_id.get() as i64).await?;
+
+        // Filter the subscriptions to just this host, and deregister any tokens
+        for hs in subscriptions.iter().filter(|hs| hs.host.host_guild_id == host.host_guild_id) {
+            if let Some(token) = hs.subscription.token {
+                let _ = self.watcher.stop_watching(token);
+            }
+        }
+
+        // Remove the host from the guild
+        self.persistence.unlink_host(host.id, guild_id.get() as i64).await?;
+
+        // If there are no more guilds for this host, remove the host
+        self.persistence.delete_host_if_orphaned(host.id).await?;
+
+        Ok(())
+    }
+
     pub async fn get_subscriptions(&self, guild_id: GuildId) -> Result<Vec<HostSubscription>, CoreError> {
         self.persistence.get_subscriptions(guild_id.get() as i64).await
     }
