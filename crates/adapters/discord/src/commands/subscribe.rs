@@ -32,14 +32,8 @@ pub async fn subscribe<P: PersistenceProvider>(
 
     println!("GuildId: {}", guild_id);
 
-    let host_by_id: HashMap<i64, Host> = ctx
-        .data()
-        .subscription_handler
-        .get_hosts(guild_id.get() as i64)
-        .await?
-        .into_iter()
-        .map(|h| (h.id, h))
-        .collect();
+    let host_by_id: HashMap<i64, Host> =
+        ctx.data().subscription_handler.get_hosts(guild_id).await?.into_iter().map(|h| (h.id, h)).collect();
 
     if host_by_id.is_empty() {
         let embed = error_embed("Subscribe Failed", "No available hosts found. Please add a host first with /host");

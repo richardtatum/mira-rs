@@ -48,8 +48,8 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         Ok(())
     }
 
-    pub async fn get_hosts(&self, guild_id: i64) -> Result<Vec<Host>, CoreError> {
-        self.persistence.get_hosts(guild_id).await
+    pub async fn get_hosts(&self, guild_id: GuildId) -> Result<Vec<Host>, CoreError> {
+        self.persistence.get_hosts(guild_id.get() as i64).await
     }
 
     pub async fn subscribe(
