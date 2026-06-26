@@ -7,7 +7,7 @@ use poise::{
     futures_util::StreamExt as _,
     serenity_prelude::{
         ButtonStyle, ComponentInteractionCollector, ComponentInteractionDataKind, CreateActionRow, CreateButton,
-        CreateInteractionResponse, CreateInteractionResponseMessage, CreateMessage, CreateSelectMenu,
+        CreateEmbed, CreateInteractionResponse, CreateInteractionResponseMessage, CreateMessage, CreateSelectMenu,
         CreateSelectMenuKind, CreateSelectMenuOption, EditInteractionResponse,
     },
 };
@@ -136,17 +136,16 @@ pub async fn remove_host<P: PersistenceProvider>(ctx: Context<'_, P>) -> Result<
 
         button_interaction.create_response(ctx.serenity_context(), done_response).await?;
 
-        // Inform everyone in the channel of the host/keys that have been unsubscribed
-        let keys_display_public = if host_keys.is_empty() {
+        let subscription_keys = if host_keys.is_empty() {
             "*(none)*".to_string()
         } else {
-            host_keys.iter().map(|k| format!("• {}", k)).collect::<Vec<_>>().join("\n")
+            host_keys.iter().map(|k| format!("• {k}")).collect::<Vec<_>>().join("\n")
         };
 
-        let public_embed = success_embed(
-            "Host Removed",
-            format!("**{}** has been removed.\n\n**Unsubscribed keys:**\n{}", host.url, keys_display_public),
-        );
+        // Inform everyone in the channel of the host/keys that have been unsubscribed
+
+        let public_embed =
+            CreateEmbed::new().title("Host Removed").color(0x2ECC71).field(&host.url, subscription_keys, false);
 
         ctx.channel_id().send_message(ctx.serenity_context(), CreateMessage::new().embed(public_embed)).await?;
     } else {

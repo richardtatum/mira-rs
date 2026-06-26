@@ -29,7 +29,8 @@ pub async fn list_subscriptions<P: PersistenceProvider>(ctx: Context<'_, P>) -> 
 
     let mut embed = CreateEmbed::new().title("Subscriptions").color(0x3498DB);
     for (host_url, keys) in &by_host {
-        embed = embed.field(host_url, keys.join("\n"), false);
+        let subsciption_keys = keys.iter().map(|k| format!("• {k}")).collect::<Vec<_>>().join("\n");
+        embed = embed.field(host_url, subsciption_keys, false);
     }
 
     ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
