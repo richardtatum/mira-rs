@@ -3,7 +3,10 @@ use mira_core::{
     CoreError, PersistenceProvider,
     models::persistence::{Host, HostSubscription, StreamState, Subscription},
 };
-use sqlx::{migrate::MigrateError, sqlite::{SqliteConnectOptions, SqlitePool}};
+use sqlx::{
+    migrate::MigrateError,
+    sqlite::{SqliteConnectOptions, SqlitePool},
+};
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -178,6 +181,37 @@ impl PersistenceProvider for SqliteClient {
         .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
 
         Ok(())
+    }
+
+    async fn get_subscription(&self, host_guild_id: i64, key: String) -> Result<Option<Subscription>, CoreError> {
+        let result = sqlx::query!(
+            r#"
+                SELECT id, key, channel_id, subscription_token, message_id
+                FROM subscription
+                WHERE host_guild_id = ?
+                AND key = ?
+            "#,
+            host_guild_id,
+            key
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| CoreError::PersistenceError(e.to_string()))?;
+
+        let Some(result) = result else {
+            return Ok(None);
+        };
+
+        let token = result.subscription_token.as_deref().and_then(|s| Uuid::parse_str(s).ok());
+        let subscription = Subscription {
+            id: result.id,
+            key: result.key,
+            channel_id: result.channel_id,
+            token,
+            message_id: result.message_id,
+        };
+
+        Ok(Some(subscription))
     }
 
     async fn get_subscriptions(&self, guild_id: i64) -> Result<Vec<HostSubscription>, CoreError> {

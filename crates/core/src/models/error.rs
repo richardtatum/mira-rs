@@ -5,6 +5,7 @@ pub enum CoreError {
     StreamError(String),
     PersistenceError(String),
     NotificationError(String),
+    AlreadyExistsError(String),
 }
 
 impl CoreError {
@@ -13,6 +14,7 @@ impl CoreError {
             CoreError::StreamError(msg) => msg,
             CoreError::PersistenceError(msg) => msg,
             CoreError::NotificationError(msg) => msg,
+            CoreError::AlreadyExistsError(msg) => msg,
         }
     }
 }
@@ -24,6 +26,7 @@ impl fmt::Display for CoreError {
             CoreError::StreamError(msg) => write!(f, "Stream error: {msg}"),
             CoreError::PersistenceError(msg) => write!(f, "Persistence error: {msg}"),
             CoreError::NotificationError(msg) => write!(f, "Notification error: {msg}"),
+            CoreError::AlreadyExistsError(msg) => write!(f, "Already exists error: {msg}"),
         }
     }
 }

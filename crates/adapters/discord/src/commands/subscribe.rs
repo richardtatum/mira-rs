@@ -1,7 +1,7 @@
 use core::time;
 use std::collections::HashMap;
 
-use mira_core::{Host, PersistenceProvider};
+use mira_core::{CoreError, Host, PersistenceProvider};
 
 use crate::{
     Context, Error,
@@ -45,7 +45,7 @@ pub async fn subscribe<P: PersistenceProvider>(
 
     // Build the select host component
     let options = hosts_by_id.values().map(|h| CreateSelectMenuOption::new(&h.url, h.id.to_string())).collect();
-    let reply = CreateReply::default().ephemeral(true).content("Select a host to remove:").components(vec![
+    let reply = CreateReply::default().ephemeral(true).content("Select a host to subscribe to:").components(vec![
         CreateActionRow::SelectMenu(
             CreateSelectMenu::new("host-select", CreateSelectMenuKind::String { options }).placeholder("Choose a host"),
         ),
@@ -72,7 +72,7 @@ pub async fn subscribe<P: PersistenceProvider>(
         return Ok(());
     };
 
-    let Some(host_id): Option<i64> = values.first().and_then(|v| v.parse().ok()) else {
+    let Some(host_id) = values.first().and_then(|v| v.parse::<i64>().ok()) else {
         return Ok(());
     };
 
@@ -87,23 +87,29 @@ pub async fn subscribe<P: PersistenceProvider>(
 
     let host_url = host.url.clone();
 
-    ctx.data().subscription_handler.subscribe(host, key.clone(), user_id, channel_id).await?;
+    let (ack_embed, subscribed) =
+        match ctx.data().subscription_handler.subscribe(host, key.clone(), user_id, channel_id).await {
+            Ok(()) => (success_embed("Done", "Subscription added."), true),
+            Err(CoreError::AlreadyExistsError(msg)) => (error_embed("Failed", msg), false),
+            Err(e) => return Err(e.into()),
+        };
 
     // Replace the ephemeral select menu with a success message
     let ack = CreateInteractionResponse::UpdateMessage(
-        CreateInteractionResponseMessage::new()
-            .content("")
-            .embed(success_embed("Done", "Subscription added."))
-            .components(vec![]),
+        CreateInteractionResponseMessage::new().content("").embed(ack_embed).components(vec![]),
     );
+
     select_interaction.create_response(&ctx.serenity_context(), ack).await?;
 
-    // Send a public success message to the channel
-    let embed = success_embed(
-        "Success",
-        format!("Subscribed to {}/{}. You will be notified in this channel when they are next online.", host_url, key),
-    );
-    channel_id.send_message(&ctx.serenity_context(), CreateMessage::new().embed(embed)).await?;
+    // Send a public success message to the channel if it succeeded
+    if subscribed {
+        let msg = format!(
+            "Subscribed to {}/{}. You will be notified in this channel when they are next online.",
+            host_url, key
+        );
+        let embed = success_embed("Success", msg);
+        channel_id.send_message(&ctx.serenity_context(), CreateMessage::new().embed(embed)).await?;
+    }
 
     Ok(())
 }

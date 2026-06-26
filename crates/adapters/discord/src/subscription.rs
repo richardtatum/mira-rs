@@ -59,6 +59,12 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         user_id: UserId,
         channel_id: ChannelId,
     ) -> Result<(), CoreError> {
+        let existing_sub = self.persistence.get_subscription(host.host_guild_id, key.clone()).await?;
+        if let Some(_) = existing_sub {
+            // Subscription already exists for this host/key
+            return Err(CoreError::AlreadyExistsError("Subscription already exists.".into()));
+        }
+
         let subscription_id = self
             .persistence
             .add_subscription(key.clone(), host.host_guild_id, channel_id.get() as i64, user_id.get() as i64)
@@ -69,8 +75,6 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
 
         let token = self.watcher.watch(host.url.clone(), host.auth_header, key, callback)?;
         self.persistence.update_subscription_token(subscription_id, token).await?;
-
-        println!("Subscribed! {subscription_id}");
 
         Ok(())
     }
