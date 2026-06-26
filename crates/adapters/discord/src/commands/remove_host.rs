@@ -35,9 +35,7 @@ pub async fn remove_host<P: PersistenceProvider>(ctx: Context<'_, P>) -> Result<
     let hosts_by_id: HashMap<i64, Host> = hosts.into_iter().map(|h| (h.id, h)).collect();
 
     // Build the select host component
-    let options: Vec<CreateSelectMenuOption> =
-        hosts_by_id.values().map(|h| CreateSelectMenuOption::new(&h.url, h.id.to_string())).collect();
-
+    let options = hosts_by_id.values().map(|h| CreateSelectMenuOption::new(&h.url, h.id.to_string())).collect();
     let reply = CreateReply::default().ephemeral(true).content("Select a host to remove:").components(vec![
         CreateActionRow::SelectMenu(
             CreateSelectMenu::new("host-select", CreateSelectMenuKind::String { options }).placeholder("Choose a host"),
@@ -47,7 +45,7 @@ pub async fn remove_host<P: PersistenceProvider>(ctx: Context<'_, P>) -> Result<
     let sent = ctx.send(reply).await?;
     let message_id = sent.message().await?.id;
 
-    // Stage 1: wait for host selection
+    // Wait for host selection
     let mut select_stream = ComponentInteractionCollector::new(ctx.serenity_context())
         .timeout(time::Duration::from_secs(120))
         .filter(move |i| i.message.id == message_id)
