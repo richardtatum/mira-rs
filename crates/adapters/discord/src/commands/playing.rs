@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use mira_core::{HostSubscription, PersistenceProvider};
 use poise::{
     CreateReply,
+    futures_util::StreamExt as _,
     serenity_prelude::{
         ComponentInteractionCollector, ComponentInteractionDataKind, CreateActionRow, CreateInteractionResponse,
         CreateInteractionResponseMessage, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption,
@@ -26,7 +27,7 @@ pub async fn playing<P: PersistenceProvider>(
         return Ok(());
     };
 
-    let host_subscription_by_id: HashMap<i64, HostSubscription> = ctx
+    let subscriptions_by_id: HashMap<i64, HostSubscription> = ctx
         .data()
         .subscription_handler
         .get_subscriptions(guild_id)
@@ -36,53 +37,69 @@ pub async fn playing<P: PersistenceProvider>(
         .map(|s| (s.subscription.id, s))
         .collect();
 
-    if host_subscription_by_id.is_empty() {
+    if subscriptions_by_id.is_empty() {
         let embed = error_embed("No Streams", "There are no streams currently online.");
         ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
         return Ok(());
     }
 
-    let options = host_subscription_by_id
+    let options = subscriptions_by_id
         .iter()
         .map(|(id, sub)| CreateSelectMenuOption::new(&sub.get_url(), &id.to_string()))
         .collect();
 
-    let reply = {
-        let menu = CreateSelectMenu::new("subscription-select", CreateSelectMenuKind::String { options })
-            .placeholder("Choose a stream");
-        let components = vec![CreateActionRow::SelectMenu(menu)];
-        poise::CreateReply::default().ephemeral(true).content("Pick an option").components(components)
-    };
+    // Create a select menu
+    let reply = CreateReply::default().ephemeral(true).content("Choose a stream").components(vec![
+        CreateActionRow::SelectMenu(
+            CreateSelectMenu::new("subscription-select", CreateSelectMenuKind::String { options })
+                .placeholder("Choose a stream"),
+        ),
+    ]);
 
     let sent = ctx.send(reply).await?;
     let message_id = sent.message().await?.id;
 
-    while let Some(interaction) = ComponentInteractionCollector::new(ctx.serenity_context())
+    // Wait for the selection
+    let mut stream = ComponentInteractionCollector::new(ctx.serenity_context())
         .timeout(time::Duration::from_secs(120))
         .filter(move |i| i.message.id == message_id)
-        .await
-    {
-        let selected = match &interaction.data.kind {
-            ComponentInteractionDataKind::StringSelect { values } => values.get(0),
-            _ => None,
-        };
+        .stream();
 
-        if let Some(value) = selected {
-            let subscription_id: i64 = value.parse().expect("Selected subscription_id must be an i64");
-            let host_subscription = host_subscription_by_id[&subscription_id].clone();
-            let url = host_subscription.get_url();
+    // Handle the timeout
+    let Some(interaction) = stream.next().await else {
+        let embed = error_embed("Timed Out", "No response received.");
+        sent.edit(ctx, CreateReply::default().content("").embed(embed).components(vec![])).await.ok();
+        return Ok(());
+    };
 
-            ctx.data().subscription_handler.set_playing(subscription_id, playing.clone()).await?;
+    let ComponentInteractionDataKind::StringSelect { values } = &interaction.data.kind else {
+        return Ok(());
+    };
 
-            let embed = success_embed("Success", format!("Updated {} to playing '{}'", url, playing.clone()));
+    let Some(subscription_id): Option<i64> = values.first().and_then(|v| v.parse().ok()) else {
+        return Ok(());
+    };
 
-            let message = CreateInteractionResponse::UpdateMessage(
-                CreateInteractionResponseMessage::new().ephemeral(true).embed(embed).content("").components(vec![]),
-            );
+    let Some(subscription) = subscriptions_by_id.get(&subscription_id).cloned() else {
+        let embed = error_embed("Error", "The selected subscription no longer exists. Please try again.");
+        let response = CreateInteractionResponse::UpdateMessage(
+            CreateInteractionResponseMessage::new().content("").embed(embed).components(vec![]),
+        );
+        interaction.create_response(ctx.serenity_context(), response).await?;
+        return Ok(());
+    };
 
-            interaction.create_response(&ctx.serenity_context(), message).await?;
-        }
-    }
+    // Action the update
+    ctx.data().subscription_handler.set_playing(subscription_id, playing.clone()).await?;
+
+    let embed =
+        success_embed("Success", format!("Updated {} to playing '{}'", subscription.get_url(), playing.clone()));
+
+    let message = CreateInteractionResponse::UpdateMessage(
+        CreateInteractionResponseMessage::new().ephemeral(true).embed(embed).content("").components(vec![]),
+    );
+
+    interaction.create_response(&ctx.serenity_context(), message).await?;
 
     Ok(())
 }
