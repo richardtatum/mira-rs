@@ -4,10 +4,11 @@ use std::collections::HashMap;
 use mira_core::{Host, PersistenceProvider};
 use poise::{
     CreateReply,
+    futures_util::StreamExt as _,
     serenity_prelude::{
-        ButtonStyle, ComponentInteractionCollector, ComponentInteractionDataKind, CreateActionRow,
-        CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage, CreateMessage,
-        CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption,
+        ButtonStyle, ComponentInteractionCollector, ComponentInteractionDataKind, CreateActionRow, CreateButton,
+        CreateInteractionResponse, CreateInteractionResponseMessage, CreateMessage, CreateSelectMenu,
+        CreateSelectMenuKind, CreateSelectMenuOption, EditInteractionResponse,
     },
 };
 
@@ -24,7 +25,7 @@ pub async fn remove_host<P: PersistenceProvider>(ctx: Context<'_, P>) -> Result<
         return Ok(());
     };
 
-    let hosts = ctx.data().subscription_handler.get_hosts(guild_id.get() as i64).await?;
+    let hosts = ctx.data().subscription_handler.get_hosts(guild_id).await?;
     if hosts.is_empty() {
         let embed = error_embed("No Hosts", "There are no hosts configured for this server.");
         ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
@@ -33,28 +34,28 @@ pub async fn remove_host<P: PersistenceProvider>(ctx: Context<'_, P>) -> Result<
 
     let hosts_by_id: HashMap<i64, Host> = hosts.into_iter().map(|h| (h.id, h)).collect();
 
-    // Step 1: select menu — pick a host
-    let options: Vec<CreateSelectMenuOption> = hosts_by_id
-        .values()
-        .map(|h| CreateSelectMenuOption::new(&h.url, h.id.to_string()))
-        .collect();
+    // Build the select host component
+    let options: Vec<CreateSelectMenuOption> =
+        hosts_by_id.values().map(|h| CreateSelectMenuOption::new(&h.url, h.id.to_string())).collect();
 
-    let reply = CreateReply::default()
-        .ephemeral(true)
-        .content("Select a host to remove:")
-        .components(vec![CreateActionRow::SelectMenu(
-            CreateSelectMenu::new("host-select", CreateSelectMenuKind::String { options })
-                .placeholder("Choose a host"),
-        )]);
+    let reply = CreateReply::default().ephemeral(true).content("Select a host to remove:").components(vec![
+        CreateActionRow::SelectMenu(
+            CreateSelectMenu::new("host-select", CreateSelectMenuKind::String { options }).placeholder("Choose a host"),
+        ),
+    ]);
 
     let sent = ctx.send(reply).await?;
     let message_id = sent.message().await?.id;
 
-    let Some(select_interaction) = ComponentInteractionCollector::new(ctx.serenity_context())
+    // Stage 1: wait for host selection
+    let mut select_stream = ComponentInteractionCollector::new(ctx.serenity_context())
         .timeout(time::Duration::from_secs(120))
         .filter(move |i| i.message.id == message_id)
-        .await
-    else {
+        .stream();
+
+    let Some(select_interaction) = select_stream.next().await else {
+        let embed = error_embed("Timed Out", "No response received.");
+        sent.edit(ctx, CreateReply::default().content("").embed(embed).components(vec![])).await?;
         return Ok(());
     };
 
@@ -69,10 +70,7 @@ pub async fn remove_host<P: PersistenceProvider>(ctx: Context<'_, P>) -> Result<
     let Some(host) = hosts_by_id.get(&host_id).cloned() else {
         let embed = error_embed("Error", "The selected host no longer exists. Please try again.");
         let response = CreateInteractionResponse::UpdateMessage(
-            CreateInteractionResponseMessage::new()
-                .content("")
-                .embed(embed)
-                .components(vec![]),
+            CreateInteractionResponseMessage::new().content("").embed(embed).components(vec![]),
         );
         select_interaction.create_response(ctx.serenity_context(), response).await?;
         return Ok(());
@@ -92,59 +90,67 @@ pub async fn remove_host<P: PersistenceProvider>(ctx: Context<'_, P>) -> Result<
         host_keys.iter().map(|k| format!("• {}", k)).collect::<Vec<_>>().join("\n")
     };
 
-    // Step 2: confirmation — show host + keys + Confirm/Cancel
-    let confirm_embed = error_embed(
-        "Confirm Removal",
-        format!("**Host:** {}\n\n**Subscribed keys:**\n{}", host.url, keys_display),
-    );
+    // Show confirmation
+    let confirm_embed =
+        error_embed("Confirm Removal", format!("**Host:** {}\n\n**Subscribed keys:**\n{}", host.url, keys_display));
 
     let confirm_response = CreateInteractionResponse::UpdateMessage(
-        CreateInteractionResponseMessage::new()
-            .content("")
-            .embed(confirm_embed)
-            .components(vec![CreateActionRow::Buttons(vec![
+        CreateInteractionResponseMessage::new().content("").embed(confirm_embed).components(vec![
+            CreateActionRow::Buttons(vec![
                 CreateButton::new("confirm").label("Remove").style(ButtonStyle::Danger),
                 CreateButton::new("cancel").label("Cancel").style(ButtonStyle::Secondary),
-            ])]),
+            ]),
+        ]),
     );
     select_interaction.create_response(ctx.serenity_context(), confirm_response).await?;
 
-    let Some(button_interaction) = ComponentInteractionCollector::new(ctx.serenity_context())
+    // Wait for button click
+    let mut button_stream = ComponentInteractionCollector::new(ctx.serenity_context())
         .timeout(time::Duration::from_secs(120))
         .filter(move |i| i.message.id == message_id)
-        .await
-    else {
+        .stream();
+
+    // If it times out, update the select component with a timeout message
+    let Some(button_interaction) = button_stream.next().await else {
+        select_interaction
+            .edit_response(
+                ctx.serenity_context(),
+                EditInteractionResponse::new()
+                    .content("")
+                    .embed(error_embed("Timed Out", "No response received."))
+                    .components(vec![]),
+            )
+            .await
+            .ok();
         return Ok(());
     };
 
     if button_interaction.data.custom_id == "confirm" {
         ctx.data().subscription_handler.remove_host(host.clone(), guild_id).await?;
 
-        // Update the ephemeral to clear it
+        // Update delete confirmation to inform the user that requested the change
         let done_response = CreateInteractionResponse::UpdateMessage(
             CreateInteractionResponseMessage::new()
                 .embed(success_embed("Done", "Host removed."))
                 .content("")
                 .components(vec![]),
         );
+
         button_interaction.create_response(ctx.serenity_context(), done_response).await?;
 
-        // Post publicly to the channel
+        // Inform everyone in the channel of the host/keys that have been unsubscribed
         let keys_display_public = if host_keys.is_empty() {
             "*(none)*".to_string()
         } else {
             host_keys.iter().map(|k| format!("• {}", k)).collect::<Vec<_>>().join("\n")
         };
+
         let public_embed = success_embed(
             "Host Removed",
-            format!(
-                "**{}** has been removed.\n\n**Unsubscribed keys:**\n{}",
-                host.url, keys_display_public
-            ),
+            format!("**{}** has been removed.\n\n**Unsubscribed keys:**\n{}", host.url, keys_display_public),
         );
-        ctx.channel_id()
-            .send_message(ctx.serenity_context(), CreateMessage::new().embed(public_embed))
-            .await?;
+
+        ctx.channel_id().send_message(ctx.serenity_context(), CreateMessage::new().embed(public_embed)).await?;
     } else {
         let cancel_response = CreateInteractionResponse::UpdateMessage(
             CreateInteractionResponseMessage::new()
