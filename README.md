@@ -89,7 +89,7 @@ Press `Ctrl+C` to stop watching.
 ### Slash Commands
 
 - [x] `/add_host` — register a Broadcast Box host with the guild
-- [ ] `/remove_host` — remove a registered host from the guild
+- [x] `/remove_host` — remove a registered host from the guild
 - [x] `/subscribe` — subscribe to a stream key on a registered host
 - [x] `/unsubscribe` — unsubscribe from a stream key
 - [x] `/playing` — set what is currently playing on a host
