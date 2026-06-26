@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use mira_core::{HostSubscription, PersistenceProvider};
 use poise::{
     CreateReply,
+    futures_util::StreamExt as _,
     serenity_prelude::{
         ComponentInteractionCollector, ComponentInteractionDataKind, CreateActionRow, CreateInteractionResponse,
         CreateInteractionResponseMessage, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption,
@@ -18,69 +19,83 @@ use crate::{
 #[poise::command(slash_command)]
 pub async fn unsubscribe<P: PersistenceProvider>(ctx: Context<'_, P>) -> Result<(), Error> {
     let Some(guild_id) = ctx.guild_id() else {
-        let embed = error_embed("Subscribe Failed", "/unsubscribe can only be ran from a server channel currently.");
+        let embed = error_embed("Subscribe Failed", "/unsubscribe can only be ran from a server channel.");
         ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
         return Ok(());
     };
 
-    let host_subscription_by_id: HashMap<i64, HostSubscription> = ctx
-        .data()
-        .subscription_handler
-        .get_subscriptions(guild_id)
-        .await?
-        .into_iter()
-        .map(|s| (s.subscription.id, s))
-        .collect();
-
-    if host_subscription_by_id.is_empty() {
+    // Obtain all the subscriptions for the guild
+    let subscriptions = ctx.data().subscription_handler.get_subscriptions(guild_id).await?;
+    if subscriptions.is_empty() {
         let embed = error_embed("No Subscriptions", "There are no subscriptions to unsubscribe from.");
         ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
         return Ok(());
     }
 
-    let options = host_subscription_by_id
+    let subscriptions_by_id: HashMap<i64, HostSubscription> =
+        subscriptions.into_iter().map(|s| (s.subscription.id, s)).collect();
+
+    let options = subscriptions_by_id
         .iter()
         .map(|(id, sub)| CreateSelectMenuOption::new(&sub.get_url(), &id.to_string()))
         .collect();
-    let reply = {
-        let menu = CreateSelectMenu::new("subscription-select", CreateSelectMenuKind::String { options })
-            .placeholder("Choose a subscription");
-        let components = vec![CreateActionRow::SelectMenu(menu)];
-        poise::CreateReply::default().ephemeral(true).content("Pick an option").components(components)
-    };
+
+    // Create a select menu
+    let reply = CreateReply::default().ephemeral(true).content("Choose a subscription").components(vec![
+        CreateActionRow::SelectMenu(
+            CreateSelectMenu::new("subscription-select", CreateSelectMenuKind::String { options })
+                .placeholder("Choose a subscription"),
+        ),
+    ]);
 
     let sent = ctx.send(reply).await?;
     let message_id = sent.message().await?.id;
 
-    while let Some(interaction) = ComponentInteractionCollector::new(ctx.serenity_context())
+    // Wait for the selection
+    let mut stream = ComponentInteractionCollector::new(ctx.serenity_context())
         .timeout(time::Duration::from_secs(120))
         .filter(move |i| i.message.id == message_id)
-        .await
-    {
-        let selected = match &interaction.data.kind {
-            ComponentInteractionDataKind::StringSelect { values } => values.get(0),
-            _ => None,
-        };
+        .stream();
 
-        if let Some(value) = selected {
-            let subscription_id: i64 = value.parse().expect("Selected subscription_id must be an i64");
-            let host_subscription = host_subscription_by_id[&subscription_id].clone();
-            let url = host_subscription.get_url();
+    let Some(interaction) = stream.next().await else {
+        let embed = error_embed("Timed Out", "No response received.");
+        sent.edit(ctx, CreateReply::default().content("").embed(embed).components(vec![])).await.ok();
+        return Ok(());
+    };
 
-            ctx.data().subscription_handler.unsubscribe(host_subscription.subscription.clone()).await?;
+    let ComponentInteractionDataKind::StringSelect { values } = &interaction.data.kind else {
+        return Ok(());
+    };
 
-            let embed = success_embed(
-                "Success",
-                format!("Unsubscribed from {}. You will no longer be notified when the come online.", url),
-            );
+    let Some(subscription_id): Option<i64> = values.first().and_then(|v| v.parse().ok()) else {
+        return Ok(());
+    };
 
-            let message = CreateInteractionResponse::UpdateMessage(
-                CreateInteractionResponseMessage::new().embed(embed).content("").components(vec![]),
-            );
+    let Some(subscription) = subscriptions_by_id.get(&subscription_id).cloned() else {
+        let embed = error_embed("Error", "The selected subscription no longer exists. Please try again.");
+        let response = CreateInteractionResponse::UpdateMessage(
+            CreateInteractionResponseMessage::new().content("").embed(embed).components(vec![]),
+        );
+        interaction.create_response(ctx.serenity_context(), response).await?;
+        return Ok(());
+    };
 
-            interaction.create_response(&ctx.serenity_context(), message).await?;
-        }
-    }
+    // Action the selection
+    let host_subscription = subscription.clone();
+    let url = host_subscription.get_url();
+
+    ctx.data().subscription_handler.unsubscribe(host_subscription.subscription.clone()).await?;
+
+    let embed = success_embed(
+        "Success",
+        format!("Unsubscribed from {}. You will no longer be notified when they come online.", url),
+    );
+
+    let message = CreateInteractionResponse::UpdateMessage(
+        CreateInteractionResponseMessage::new().embed(embed).content("").components(vec![]),
+    );
+
+    interaction.create_response(&ctx.serenity_context(), message).await?;
 
     Ok(())
 }
