@@ -11,3 +11,9 @@ mira-core = { path = "../../core" }
 mira-stream-watcher = { path = "../../stream-watcher" }
 uuid = { workspace = true }
 url = { workspace = true }
+tokio-util = { workspace = true }
+dashmap = { workspace = true }
+
+[dev-dependencies]
+serde_json = "1"
+tempfile = "3"
