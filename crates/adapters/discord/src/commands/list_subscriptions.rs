@@ -15,20 +15,21 @@ pub async fn list_subscriptions<P: PersistenceProvider>(ctx: Context<'_, P>) -> 
     };
 
     let subscriptions = ctx.data().subscription_handler.get_subscriptions(guild_id).await?;
-
     if subscriptions.is_empty() {
         let embed = error_embed("No Subscriptions", "There are no active subscriptions for this server.");
         ctx.send(CreateReply::default().ephemeral(true).embed(embed)).await?;
         return Ok(());
     }
 
-    let mut by_host: HashMap<String, Vec<String>> = HashMap::new();
+    let mut subscriptions_by_host: HashMap<String, Vec<String>> = HashMap::new();
     for sub in &subscriptions {
-        by_host.entry(sub.host.url.clone()).or_default().push(sub.subscription.key.clone());
+        // Get the entry for this host, creating a new mutable array if it's empty, then push the subscription key
+        subscriptions_by_host.entry(sub.host.url.clone()).or_default().push(sub.subscription.key.clone());
     }
 
     let mut embed = CreateEmbed::new().title("Subscriptions").color(0x3498DB);
-    for (host_url, keys) in &by_host {
+    for (host_url, keys) in &subscriptions_by_host {
+        // Create an embed field for each host, with the url as the header and keys as a list within
         let subsciption_keys = keys.iter().map(|k| format!("• {k}")).collect::<Vec<_>>().join("\n");
         embed = embed.field(host_url, subsciption_keys, false);
     }
