@@ -1,5 +1,3 @@
-mod event_handlers;
-
 use std::env;
 use std::sync::Arc;
 
@@ -18,7 +16,7 @@ async fn main() {
                 println!("Executing command {} for user {}", ctx.command().qualified_name, ctx.author().name)
             })
         },
-        event_handler: |ctx, event, framework, data| Box::pin(event_handler(event, data)),
+        event_handler: |_ctx, event, _framework, data| Box::pin(event_handler(event, data)),
         ..Default::default()
     };
 
@@ -80,6 +78,15 @@ pub async fn event_handler<P: PersistenceProvider>(event: &serenity::FullEvent, 
         }
         serenity::FullEvent::ChannelDelete { channel, messages: _ } => {
             data.subscription_handler.remove_channel(channel.guild_id, channel.id).await?;
+            return Ok(());
+        }
+        serenity::FullEvent::MessageDelete { channel_id: _, deleted_message_id, guild_id } => {
+            // If it wasn't a message in a guild, just ignore as thats all we support (currently)
+            let Some(guild_id) = guild_id else {
+                return Ok(());
+            };
+
+            data.subscription_handler.remove_message(*guild_id, *deleted_message_id).await?;
             return Ok(());
         }
         _ => return Ok(()),

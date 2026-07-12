@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use mira_core::{CoreError, Host, HostSubscription, PersistenceProvider, StreamStatus, Subscription};
 use mira_stream_watcher::StreamWatcher;
-use poise::serenity_prelude::{ChannelId, GuildId, Http, UserId};
+use poise::serenity_prelude::{ChannelId, GuildId, Http, MessageId, UserId};
 use url::Url;
 
 use crate::notifier::{DiscordNotifier, StateChange};
@@ -122,14 +122,33 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         let subscriptions = self.get_subscriptions(guild_id).await?;
         let channel = channel_id.get() as i64;
 
-        for s in subscriptions.into_iter().map(|hs| hs.subscription).filter(|s| s.channel_id == channel) {
+        for sub in subscriptions.into_iter().map(|hs| hs.subscription).filter(|s| s.channel_id == channel) {
             // Unsubscribe each that match, but just log if they fail and move onto the next one
-            if let Err(e) = self.unsubscribe(s.clone()).await {
+            if let Err(e) = self.unsubscribe(sub.clone()).await {
                 println!(
                     "Failed to remove subscription '{}' after it's channel '{}' was deleted! Error: {}",
-                    s.id,
+                    &sub.id,
                     &channel_id,
-                    e.message()
+                    &e.message()
+                )
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn remove_message(&self, guild_id: GuildId, message_id: MessageId) -> Result<(), CoreError> {
+        let subscriptions = self.get_subscriptions(guild_id).await?;
+        let message = message_id.get() as i64;
+
+        for sub in subscriptions.into_iter().map(|hs| hs.subscription).filter(|s| s.message_id == Some(message)) {
+            let sub_id = sub.id;
+            // Mark the subscription as offline to wipe the stored message_id and prompt a new message to be generated
+            if let Err(e) = self.persistence.mark_subscription_offline(sub_id.clone()).await {
+                println!(
+                    "Failed to mark subscription '{}' as offline to recreate the message after it was deleted! Error: {}",
+                    &sub_id,
+                    &e.message()
                 )
             }
         }
