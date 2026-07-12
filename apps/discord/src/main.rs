@@ -73,11 +73,11 @@ pub async fn event_handler<P: PersistenceProvider>(event: &serenity::FullEvent, 
                 return Ok(());
             }
 
-            data.subscription_handler.remove_guild(incomplete.id).await?;
+            data.subscription_handler.on_guild_deleted(incomplete.id).await?;
             return Ok(());
         }
         serenity::FullEvent::ChannelDelete { channel, messages: _ } => {
-            data.subscription_handler.remove_channel(channel.guild_id, channel.id).await?;
+            data.subscription_handler.on_channel_deleted(channel.guild_id, channel.id).await?;
             return Ok(());
         }
         serenity::FullEvent::MessageDelete { channel_id: _, deleted_message_id, guild_id } => {
@@ -86,7 +86,7 @@ pub async fn event_handler<P: PersistenceProvider>(event: &serenity::FullEvent, 
                 return Ok(());
             };
 
-            data.subscription_handler.remove_message(*guild_id, *deleted_message_id).await?;
+            data.subscription_handler.on_message_deleted(*guild_id, *deleted_message_id).await?;
             return Ok(());
         }
         _ => return Ok(()),

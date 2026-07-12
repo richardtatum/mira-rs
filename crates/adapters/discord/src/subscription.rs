@@ -109,7 +109,7 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
     }
 
     /// Cleans up all hosts/subscriptions for a guild, e.g. when the bot is removed from it.
-    pub async fn remove_guild(&self, guild_id: GuildId) -> Result<(), CoreError> {
+    pub async fn on_guild_deleted(&self, guild_id: GuildId) -> Result<(), CoreError> {
         let hosts = self.persistence.get_hosts(guild_id.get() as i64).await?;
         for host in hosts {
             self.remove_host(host, guild_id).await?;
@@ -118,7 +118,7 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
     }
 
     // Cleans up all subscriptions from a given channel
-    pub async fn remove_channel(&self, guild_id: GuildId, channel_id: ChannelId) -> Result<(), CoreError> {
+    pub async fn on_channel_deleted(&self, guild_id: GuildId, channel_id: ChannelId) -> Result<(), CoreError> {
         let subscriptions = self.get_subscriptions(guild_id).await?;
         let channel = channel_id.get() as i64;
 
@@ -137,7 +137,7 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         Ok(())
     }
 
-    pub async fn remove_message(&self, guild_id: GuildId, message_id: MessageId) -> Result<(), CoreError> {
+    pub async fn on_message_deleted(&self, guild_id: GuildId, message_id: MessageId) -> Result<(), CoreError> {
         let message = message_id.get() as i64;
         let guild = guild_id.get() as i64;
 
