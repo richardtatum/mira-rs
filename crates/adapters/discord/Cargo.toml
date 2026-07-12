@@ -9,6 +9,7 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 chrono = { workspace = true }
 mira-core = { path = "../../core" }
 mira-stream-watcher = { path = "../../stream-watcher" }
+mira-thumbnail = { path = "../thumbnail" }
 uuid = { workspace = true }
 url = { workspace = true }
 tokio-util = { workspace = true }

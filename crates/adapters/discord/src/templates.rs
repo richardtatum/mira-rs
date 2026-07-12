@@ -12,7 +12,7 @@ pub fn success_embed(title: impl Into<String>, message: impl Into<String>) -> Cr
     CreateEmbed::new().title(title).color(0x2ECC71).description(message)
 }
 
-pub fn online_embed(stream_url: &str, key: &str, info: &StreamInfo, playing: Option<&str>) -> CreateEmbed {
+pub fn online_embed(stream_url: &str, key: &str, info: &StreamInfo, playing: Option<&str>, thumbnail: bool) -> CreateEmbed {
     let duration = Utc::now() - info.started;
     let hours = duration.num_hours();
     let minutes = duration.num_minutes() % 60;
@@ -30,11 +30,40 @@ pub fn online_embed(stream_url: &str, key: &str, info: &StreamInfo, playing: Opt
         .footer(CreateEmbedFooter::new("Started"))
         .timestamp(Timestamp::from(info.started));
 
+    if thumbnail {
+        embed = embed.image("attachment://thumb.jpg");
+    }
+
     if let Some(playing) = playing {
         embed = embed.field("Playing", playing, false);
     }
 
     embed
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use mira_core::StreamInfo;
+
+    fn make_info() -> StreamInfo {
+        StreamInfo { started: Utc::now(), viewers: 5 }
+    }
+
+    #[test]
+    fn online_embed_with_thumbnail_includes_image_field() {
+        let embed = online_embed("http://example.com", "mykey", &make_info(), None, true);
+        let json = serde_json::to_value(&embed).unwrap();
+        assert_eq!(json["image"]["url"], "attachment://thumb.jpg");
+    }
+
+    #[test]
+    fn online_embed_without_thumbnail_has_no_image_field() {
+        let embed = online_embed("http://example.com", "mykey", &make_info(), None, false);
+        let json = serde_json::to_value(&embed).unwrap();
+        assert!(json.get("image").is_none());
+    }
 }
 
 pub fn offline_embed(stream_url: &str, key: &str, playing: Option<&str>) -> CreateEmbed {

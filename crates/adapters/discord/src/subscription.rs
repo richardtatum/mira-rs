@@ -1,11 +1,15 @@
 use std::future::Future;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Duration;
 
+use dashmap::DashMap;
 use mira_core::{CoreError, Host, HostSubscription, PersistenceProvider, StreamStatus, Subscription};
 use mira_stream_watcher::StreamWatcher;
 use poise::serenity_prelude::{ChannelId, GuildId, Http, UserId};
 use url::Url;
+use uuid::Uuid;
 
 use crate::notifier::{DiscordNotifier, StateChange};
 
@@ -13,11 +17,35 @@ pub struct SubscriptionHandler<P: PersistenceProvider + 'static> {
     watcher: StreamWatcher,
     notifier: DiscordNotifier,
     persistence: Arc<P>,
+    thumbnail_interval: Option<Duration>,
+    thumbnail_dir: PathBuf,
+    cancel_tokens: Arc<DashMap<i64, tokio_util::sync::CancellationToken>>,
 }
 
 impl<P: PersistenceProvider> SubscriptionHandler<P> {
     pub fn new(http: Arc<Http>, persistence: Arc<P>) -> Self {
-        Self { watcher: StreamWatcher::new(None), notifier: DiscordNotifier::new(http), persistence }
+        let thumbnail_interval = std::env::var("THUMBNAIL_INTERVAL_SECS")
+            .ok()
+            .and_then(|s| s.parse::<u64>().ok())
+            .map(Duration::from_secs);
+
+        let thumbnail_dir = std::env::var("THUMBNAIL_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| std::env::temp_dir().join("mira-thumbnails"));
+
+        // Ensure thumbnail directory exists
+        if thumbnail_interval.is_some() {
+            std::fs::create_dir_all(&thumbnail_dir).ok();
+        }
+
+        Self {
+            watcher: StreamWatcher::new(None),
+            notifier: DiscordNotifier::new(http),
+            persistence,
+            thumbnail_interval,
+            thumbnail_dir,
+            cancel_tokens: Arc::new(DashMap::new()),
+        }
     }
 
     pub async fn add_host(
@@ -71,7 +99,7 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
             .await?;
 
         let stream_url = format!("{}/{}", host.url, key);
-        let callback = self.build_callback(subscription_id, channel_id, stream_url, key.clone());
+        let callback = self.build_callback(subscription_id, channel_id, host.url.clone(), stream_url, key.clone());
 
         let token = self.watcher.watch(host.url.clone(), host.auth_header, key, callback)?;
         self.persistence.update_subscription_token(subscription_id, token).await?;
@@ -83,6 +111,11 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         if let Some(token) = subscription.token {
             // If there is a token, deregister
             self.watcher.stop_watching(token)?;
+        }
+
+        // Cancel any running thumbnail capture loop for this subscription
+        if let Some((_, token)) = self.cancel_tokens.remove(&subscription.id) {
+            token.cancel();
         }
 
         // remove from the DB regardless
@@ -126,7 +159,7 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
             let host_url = host.url.clone();
 
             let stream_url = format!("{}/{}", host.url, key);
-            let callback = self.build_callback(subscription_id, channel_id, stream_url, key.clone());
+            let callback = self.build_callback(subscription_id, channel_id, host.url.clone(), stream_url, key.clone());
 
             let token = self.watcher.watch(host.url, host.auth_header, key.clone(), callback)?;
             self.persistence.update_subscription_token(subscription_id, token).await?;
@@ -145,12 +178,16 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         &self,
         subscription_id: i64,
         channel_id: ChannelId,
+        host_url: String,
         stream_url: String,
         key: String,
     ) -> impl Fn(StreamStatus) -> Pin<Box<dyn Future<Output = Result<(), CoreError>> + Send + 'static>> + Send + Sync + 'static
     {
         let persistence = self.persistence.clone();
         let notifier = self.notifier.clone();
+        let thumbnail_interval = self.thumbnail_interval;
+        let thumbnail_dir = self.thumbnail_dir.clone();
+        let cancel_tokens = self.cancel_tokens.clone();
 
         move |status: StreamStatus| {
             let persistence = persistence.clone();
@@ -158,18 +195,129 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
             let channel_id = channel_id;
             let stream_url = stream_url.clone();
             let key = key.clone();
+            let host_url = host_url.clone();
+            let cancel_tokens = cancel_tokens.clone();
+            let thumbnail_dir = thumbnail_dir.clone();
 
             Box::pin(async move {
                 let state = persistence.get_stream_state(subscription_id).await?;
-                match notifier.notify(status, state, channel_id, stream_url, key).await? {
+
+                // Read thumbnail if configured
+                let path = thumbnail_interval
+                    .map(|_| thumbnail_path(&thumbnail_dir, &host_url, &key));
+                let thumbnail = if let Some(ref p) = path {
+                    tokio::fs::read(p).await.ok().filter(|b| !b.is_empty())
+                } else {
+                    None
+                };
+
+                match notifier.notify(status, state, channel_id, stream_url.clone(), key.clone(), thumbnail).await? {
                     Some(StateChange::Online { message_id }) => {
-                        persistence.mark_subscription_online(subscription_id, message_id).await?
+                        persistence.mark_subscription_online(subscription_id, message_id).await?;
+
+                        if let (Some(interval), Some(path)) = (thumbnail_interval, path) {
+                            let whep_url = format!("{host_url}/api/whep");
+                            let auth = format!("Bearer {key}");
+
+                            // Cancel any existing token for this subscription first (fixes C2)
+                            if let Some((_, old)) = cancel_tokens.remove(&subscription_id) {
+                                old.cancel();
+                            }
+                            let token = tokio_util::sync::CancellationToken::new();
+                            cancel_tokens.insert(subscription_id, token.clone());
+
+                            tokio::spawn(async move {
+                                loop {
+                                    tokio::select! {
+                                        _ = token.cancelled() => break,
+                                        _ = tokio::time::sleep(interval) => {
+                                            maybe_capture(&path, interval, &whep_url, &auth).await;
+                                        }
+                                    }
+                                }
+                            });
+                        }
                     }
-                    Some(StateChange::Offline) => persistence.mark_subscription_offline(subscription_id).await?,
+                    Some(StateChange::Offline) => {
+                        persistence.mark_subscription_offline(subscription_id).await?;
+
+                        if let Some((_, token)) = cancel_tokens.remove(&subscription_id) {
+                            token.cancel();
+                        }
+                        if let Some(path) = path {
+                            tokio::fs::remove_file(&path).await.ok();
+                        }
+                    }
                     None => {}
                 }
                 Ok(())
             })
         }
+    }
+}
+
+fn thumbnail_path(thumbnail_dir: &Path, host_url: &str, key: &str) -> PathBuf {
+    let name = Uuid::new_v5(
+        &Uuid::NAMESPACE_URL,
+        format!("{host_url}/{key}").as_bytes(),
+    );
+    thumbnail_dir.join(format!("{name}.jpg"))
+}
+
+async fn maybe_capture(path: &Path, interval: Duration, whep_url: &str, auth: &str) {
+    let is_fresh = path
+        .metadata()
+        .and_then(|m| m.modified())
+        .map(|t| t.elapsed().unwrap_or_default() < interval)
+        .unwrap_or(false);
+
+    if is_fresh { return; }
+
+    // Touch before connecting — other tasks see a fresh mtime and skip this cycle.
+    // ponytail: tiny check→touch race remains; window is microseconds and consequence
+    // is at most two simultaneous WHEP connections once per interval.
+    let _ = tokio::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .open(path)
+        .await;
+
+    if let Ok(bytes) = mira_thumbnail::capture(whep_url, auth).await {
+        tokio::fs::write(path, bytes).await.ok();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+    use tokio::fs;
+
+    #[tokio::test]
+    async fn maybe_capture_skips_fresh_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test.jpg");
+
+        // Write a fresh file
+        fs::write(&path, b"fake jpeg content").await.unwrap();
+
+        // Track whether capture was called by checking mtime doesn't change
+        let mtime_before = path.metadata().unwrap().modified().unwrap();
+        maybe_capture(&path, Duration::from_secs(300), "http://unused", "Bearer unused").await;
+        let mtime_after = path.metadata().unwrap().modified().unwrap();
+
+        assert_eq!(mtime_before, mtime_after, "should not have touched fresh file");
+    }
+
+    #[tokio::test]
+    async fn maybe_capture_touches_stale_file_before_capture() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test.jpg");
+
+        // No file exists (stale)
+        maybe_capture(&path, Duration::from_secs(1), "http://127.0.0.1:1/api/whep", "Bearer bad").await;
+
+        // File should be created (touched) even though capture fails (no server)
+        assert!(path.exists(), "file should be created before capture attempt");
     }
 }
