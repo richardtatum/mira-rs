@@ -29,21 +29,25 @@ impl DiscordNotifier {
         key: String,
     ) -> Result<Option<StateChange>, CoreError> {
         match (status, state) {
+            // Stream is coming online
             (StreamStatus::Online(info), StreamState::Offline) => {
                 let message = self.send_online_message(&stream_url, &key, &info, &channel_id).await?;
                 let state_change = Some(StateChange::Online { message_id: message.get() as i64 });
 
                 Ok(state_change)
             }
+            // Stream is still online
             (StreamStatus::Online(info), StreamState::Online { message_id, playing }) => {
                 self.send_update_message(&stream_url, &key, &info, &channel_id, message_id, playing.as_deref()).await?;
                 Ok(None) // No state change
             }
+            // Stream is going offline
             (StreamStatus::Offline, StreamState::Online { message_id, playing }) => {
                 self.send_offline_message(&stream_url, &key, &channel_id, message_id, playing.as_deref()).await?;
                 let state_change = Some(StateChange::Offline);
                 Ok(state_change)
             }
+            // Stream is still offline
             (StreamStatus::Offline, StreamState::Offline) => {
                 Ok(None) // no state change
             }

@@ -33,7 +33,7 @@ pub async fn playing<P: PersistenceProvider>(
         .get_subscriptions(guild_id)
         .await?
         .into_iter()
-        .filter(|s| s.subscription.is_online()) // filter to only online subscriptions
+        .filter(|s| s.subscription.is_online()) // We only want to set the 'playing' value for online subscriptions
         .map(|s| (s.subscription.id, s))
         .collect();
 
