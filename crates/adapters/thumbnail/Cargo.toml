@@ -1,0 +1,16 @@
+[package]
+name = "mira-thumbnail"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+thiserror = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+str0m = { workspace = true }
+openh264 = { workspace = true }
+image = { workspace = true }
+
+[dev-dependencies]
+wiremock = "0.6"
+tokio = { workspace = true }
