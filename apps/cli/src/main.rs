@@ -38,6 +38,17 @@ enum Commands {
         #[arg(long)]
         polling_interval: Option<u64>,
     },
+    /// Capture a thumbnail from a stream and save it to a file
+    Thumbnail {
+        /// The stream key to capture
+        key: String,
+        /// BroadcastBox base URL
+        #[arg(long, env = "BROADCAST_BOX_URL")]
+        url: String,
+        /// Path to write the JPEG thumbnail
+        #[arg(long)]
+        output: std::path::PathBuf,
+    },
 }
 
 #[tokio::main]
@@ -104,6 +115,51 @@ async fn main() {
                 .expect("Watcher failed!");
 
             tokio::signal::ctrl_c().await.unwrap();
+        }
+        Commands::Thumbnail { key, url, output } => {
+            let whep_url = format!("{url}/api/whep");
+            // For whep, the header is the key
+            let auth_header = format!("Bearer {key}");
+            match mira_thumbnail::capture(&whep_url, &auth_header).await {
+                Ok(bytes) => {
+                    if let Err(e) = tokio::fs::write(&output, &bytes).await {
+                        eprintln!("Failed to write thumbnail: {e}");
+                        std::process::exit(1);
+                    }
+                    println!("Thumbnail saved to {}", output.display());
+                }
+                Err(e) => {
+                    eprintln!("Capture failed: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn thumbnail_subcommand_parses_all_args() {
+        let cli = Cli::parse_from([
+            "mira",
+            "thumbnail",
+            "my-key",
+            "--url",
+            "https://b.siobud.com",
+            "--output",
+            "/tmp/thumb.jpg",
+        ]);
+        match cli.command {
+            Commands::Thumbnail { key, url, output } => {
+                assert_eq!(key, "my-key");
+                assert_eq!(url, "https://b.siobud.com");
+                assert_eq!(output, std::path::PathBuf::from("/tmp/thumb.jpg"));
+            }
+            _ => panic!("wrong variant"),
         }
     }
 }

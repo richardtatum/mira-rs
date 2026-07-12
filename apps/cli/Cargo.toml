@@ -7,6 +7,7 @@ edition = "2024"
 mira-stream-watcher = { path = "../../crates/stream-watcher" }
 mira-core = { path = "../../crates/core" }
 mira-broadcast-box = { path = "../../crates/adapters/broadcast_box" }
+mira-thumbnail = { path = "../../crates/adapters/thumbnail" }
 clap = { version = "4", features = ["derive", "env"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 chrono = { workspace = true }
