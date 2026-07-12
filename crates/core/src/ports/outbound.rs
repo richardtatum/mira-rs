@@ -48,6 +48,12 @@ pub trait PersistenceProvider: Send + Sync {
 
     async fn get_subscription(&self, host_guild_id: i64, key: String) -> Result<Option<Subscription>, CoreError>;
 
+    async fn get_subscription_by_message(
+        &self,
+        guild_id: i64,
+        message_id: i64,
+    ) -> Result<Option<Subscription>, CoreError>;
+
     async fn get_subscriptions(&self, guild_id: i64) -> Result<Vec<HostSubscription>, CoreError>;
 
     async fn get_all_subscriptions(&self) -> Result<Vec<HostSubscription>, CoreError>;

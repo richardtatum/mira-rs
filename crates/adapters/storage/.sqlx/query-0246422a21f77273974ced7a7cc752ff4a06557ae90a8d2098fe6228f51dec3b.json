@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT s.id, s.key, s.channel_id, s.subscription_token, s.message_id\n                FROM subscription s\n                INNER JOIN host_guild hg ON hg.id = s.host_guild_id\n                WHERE hg.guild_id = ?\n                AND s.message_id = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "key",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "channel_id",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "subscription_token",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "message_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "0246422a21f77273974ced7a7cc752ff4a06557ae90a8d2098fe6228f51dec3b"
+}

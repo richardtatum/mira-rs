@@ -138,19 +138,21 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
     }
 
     pub async fn remove_message(&self, guild_id: GuildId, message_id: MessageId) -> Result<(), CoreError> {
-        let subscriptions = self.get_subscriptions(guild_id).await?;
         let message = message_id.get() as i64;
+        let guild = guild_id.get() as i64;
 
-        for sub in subscriptions.into_iter().map(|hs| hs.subscription).filter(|s| s.message_id == Some(message)) {
-            let sub_id = sub.id;
-            // Mark the subscription as offline to wipe the stored message_id and prompt a new message to be generated
-            if let Err(e) = self.persistence.mark_subscription_offline(sub_id.clone()).await {
-                println!(
-                    "Failed to mark subscription '{}' as offline to recreate the message after it was deleted! Error: {}",
-                    &sub_id,
-                    &e.message()
-                )
-            }
+        // Check if we have anything attached to the message_id
+        let Some(subscription) = self.persistence.get_subscription_by_message(guild, message).await? else {
+            return Ok(());
+        };
+
+        // Mark the subscription as offline to wipe the stored message_id and prompt a new message to be generated
+        if let Err(e) = self.persistence.mark_subscription_offline(subscription.id).await {
+            println!(
+                "Failed to mark subscription '{}' as offline to recreate the message after it was deleted! Error: {}",
+                subscription.id,
+                &e.message()
+            )
         }
 
         Ok(())
