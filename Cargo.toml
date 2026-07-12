@@ -4,6 +4,7 @@ members = [
     "crates/adapters/storage",
     "crates/adapters/discord",
     "crates/adapters/broadcast_box",
+    "crates/adapters/thumbnail",
     "crates/stream-watcher",
     "apps/*",
 ]
@@ -12,11 +13,16 @@ resolver = "2"
 [workspace.dependencies]
 async-trait = "0.1"
 thiserror = "2.0.18"
-tokio = { version = "1.52.1", features = ["macros", "rt-multi-thread", "time", "sync"] }
+tokio = { version = "1.52.1", features = ["macros", "rt-multi-thread", "time", "sync", "net", "fs"] }
+tokio-util = { version = "0.7", features = ["rt"] }
 chrono = "0.4"
 serde = { version = "1", features = ["derive"] }
 poise = "0.6.1"
-uuid = { version = "1", features = ["v4"] }
+uuid = { version = "1", features = ["v4", "v5"] }
 url = "2"
 dashmap = "6.1.0"
 reqwest = { version = "0.13", features = ["json", "rustls"], default-features = false }
+str0m = "0.21"
+openh264 = "0.9"
+image = { version = "0.25", default-features = false, features = ["jpeg"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
