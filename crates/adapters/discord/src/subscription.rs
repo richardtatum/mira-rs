@@ -108,6 +108,35 @@ impl<P: PersistenceProvider> SubscriptionHandler<P> {
         Ok(())
     }
 
+    /// Cleans up all hosts/subscriptions for a guild, e.g. when the bot is removed from it.
+    pub async fn remove_guild(&self, guild_id: GuildId) -> Result<(), CoreError> {
+        let hosts = self.persistence.get_hosts(guild_id.get() as i64).await?;
+        for host in hosts {
+            self.remove_host(host, guild_id).await?;
+        }
+        Ok(())
+    }
+
+    // Cleans up all subscriptions from a given channel
+    pub async fn remove_channel(&self, guild_id: GuildId, channel_id: ChannelId) -> Result<(), CoreError> {
+        let subscriptions = self.get_subscriptions(guild_id).await?;
+        let channel = channel_id.get() as i64;
+
+        for s in subscriptions.into_iter().map(|hs| hs.subscription).filter(|s| s.channel_id == channel) {
+            // Unsubscribe each that match, but just log if they fail and move onto the next one
+            if let Err(e) = self.unsubscribe(s.clone()).await {
+                println!(
+                    "Failed to remove subscription '{}' after it's channel '{}' was deleted! Error: {}",
+                    s.id,
+                    &channel_id,
+                    e.message()
+                )
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn get_subscriptions(&self, guild_id: GuildId) -> Result<Vec<HostSubscription>, CoreError> {
         self.persistence.get_subscriptions(guild_id.get() as i64).await
     }
